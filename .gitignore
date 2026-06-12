@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+sbom.cdx.json
+
+# Rust
+rust/target/
+rust/Cargo.lock
+
+# OS / editors / mount artifacts
+.DS_Store
+.fuse_hidden*
+.claude/
+.specify/

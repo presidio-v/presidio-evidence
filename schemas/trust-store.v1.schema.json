@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://presidio-group.eu/schemas/trust-store.v1.schema.json",
+  "title": "presidio-hardened/trust-store@1",
+  "description": "Verifier-side trust store, keyed by signer id. A bare string value is an HMAC-SHA256 secret (back-compat; arbitrary UTF-8, not hex). An object declares the signer's algorithm and key material; key material may be a single string or a list (key rotation: any listed key may verify). Ed25519 public keys MUST be 64 lowercase hex chars (32 raw bytes) — enforced fail-closed at verification time, not schema time, matching the ikigov-assess consumer (ADR-0001 D3). 'public_key' and 'key' are accepted interchangeably as fallbacks, mirroring the consumer's normalisation.",
+  "type": "object",
+  "additionalProperties": {
+    "oneOf": [
+      { "type": "string", "minLength": 1, "description": "Bare HMAC-SHA256 secret (back-compat)." },
+      {
+        "type": "object",
+        "properties": {
+          "alg": { "enum": ["ed25519", "hmac-sha256"], "default": "hmac-sha256" },
+          "public_key": { "$ref": "#/$defs/keyMaterial" },
+          "key": { "$ref": "#/$defs/keyMaterial" }
+        },
+        "anyOf": [{ "required": ["public_key"] }, { "required": ["key"] }],
+        "additionalProperties": false
+      }
+    ]
+  },
+  "$defs": {
+    "keyString": { "type": "string", "minLength": 1 },
+    "keyMaterial": {
+      "oneOf": [
+        { "$ref": "#/$defs/keyString" },
+        { "type": "array", "items": { "$ref": "#/$defs/keyString" }, "minItems": 1 }
+      ]
+    }
+  }
+}

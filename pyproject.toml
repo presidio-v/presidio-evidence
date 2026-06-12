@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "presidio-evidence"
+version = "0.1.0"
+description = "Shared evidence substrate for the presidio-hardened-* suite: pre-execution gating + signed evidence + fail-closed verification. Schema and golden test vectors are the contract; implementations conform to them. Independent of Microsoft Presidio."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Presidio Security" }]
+keywords = [
+    "presidio",
+    "hardening",
+    "security-engineering",
+    "evidence",
+    "ed25519",
+    "audit",
+    "eu-ai-act",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Security",
+    # Internal library, private repo pending founder clearance (ADR-0001 D6).
+    # This classifier makes any accidental `twine upload` fail server-side.
+    "Private :: Do Not Upload",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "pip-audit>=2.7",
+    "jsonschema>=4.21",
+    "cryptography>=42",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/presidio_evidence"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.report]
+fail_under = 100

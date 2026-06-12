@@ -1,0 +1,18 @@
+[package]
+name = "presidio-evidence"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Shared evidence substrate for the presidio-hardened-* suite (Rust side). Schema and golden test vectors at the repo root are the contract; this crate conforms to them. Independent of Microsoft Presidio."
+publish = false # private until founder clearance (ADR-0001 D6); never auto-publish
+
+[dependencies]
+# Constants-only for now (ADR-0001 scope: conformance tests before code).
+
+[dev-dependencies]
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+sha2 = "0.10"
+hmac = "0.12"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

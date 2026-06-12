@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://presidio-group.eu/schemas/evidence-ref.v1.schema.json",
+  "title": "presidio-hardened/evidence-ref@1",
+  "description": "Cross-repo signed evidence contract. Frozen: no field removals, no type or constraint changes, no new required fields within @1 (ADR-0001 D5). Normative source; consumer copies are conformance-tested mirrors. The detached signature is alg(canonical_json({\"content_hash\": ..., \"signer\": ...})) where canonical_json sorts keys, uses (\",\", \":\") separators, UTF-8, ensure_ascii=False.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "presidio-hardened/evidence-ref@1",
+      "description": "Optional in @1 (grandfathered); when present must match exactly. Verifiers reject any other value (fail-closed)."
+    },
+    "use_case": { "$ref": "#/$defs/boundedString" },
+    "source": { "$ref": "#/$defs/boundedString" },
+    "source_version": { "$ref": "#/$defs/boundedString" },
+    "generated_at": { "$ref": "#/$defs/boundedString" },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidenceRef" }
+    }
+  },
+  "required": ["evidence"],
+  "$defs": {
+    "boundedString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000]*$"
+    },
+    "lowercaseHex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8,128}$"
+    },
+    "evidenceRef": {
+      "type": "object",
+      "description": "One signed evidence reference. All 8 fields required, non-empty strings ≤512 chars, no null bytes. item_id domain validation (e.g. ikigov checklist membership) is consumer-side, not part of the wire contract.",
+      "properties": {
+        "item_id": { "$ref": "#/$defs/boundedString" },
+        "source": { "$ref": "#/$defs/boundedString" },
+        "source_version": { "$ref": "#/$defs/boundedString" },
+        "ledger_ref": { "$ref": "#/$defs/boundedString" },
+        "content_hash": {
+          "allOf": [{ "$ref": "#/$defs/boundedString" }, { "$ref": "#/$defs/lowercaseHex" }]
+        },
+        "signer": { "$ref": "#/$defs/boundedString" },
+        "signature": {
+          "allOf": [{ "$ref": "#/$defs/boundedString" }, { "$ref": "#/$defs/lowercaseHex" }]
+        },
+        "claimed_at": { "$ref": "#/$defs/boundedString" }
+      },
+      "required": [
+        "item_id",
+        "source",
+        "source_version",
+        "ledger_ref",
+        "content_hash",
+        "signer",
+        "signature",
+        "claimed_at"
+      ]
+    }
+  }
+}
