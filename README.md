@@ -50,7 +50,7 @@ Full deliberation: [PRESIDIO-REQ.md](PRESIDIO-REQ.md). Design rationale: [docs/a
 
 ## Governance
 
-Humboldt discipline applies: anything externally visible (publish, visibility change, README claims) requires a founder-signed release step. ADR-0001 is **Proposed** until founder-signed. Scope is extraction + conformance only — new capabilities are rejected and recorded as ledger entries.
+Humboldt discipline applies: anything externally visible (publish, visibility change, README claims) requires a founder-signed release step. ADR-0001 is **Accepted** (founder-signed 2026-06-12). Scope is extraction + conformance only — new capabilities are rejected and recorded as ledger entries.
 
 ## License
 

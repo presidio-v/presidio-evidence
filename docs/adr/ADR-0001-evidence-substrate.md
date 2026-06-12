@@ -1,6 +1,6 @@
 # ADR-0001: presidio-evidence — the shared evidence substrate
 
-**Status:** Proposed (founder signature required for Accepted)
+**Status:** Accepted — founder-signed 2026-06-12, Vladimir Stantchev (V.S.)
 **Date:** 2026-06-12
 **Deciders:** V.S. (founder, governing account)
 **Source mandate:** development-plan.md §6; session-4-evidence-library-adr.md
@@ -106,6 +106,6 @@ The decisive observation: **the unification already happened in the wire format;
 1. [x] Scaffold repo: schemas + golden vectors + conformance tests in both languages as first commit (this session).
 2. [x] Migration map per consumer (`docs/MIGRATION.md`, this session).
 3. [x] Visibility question put to the founder (decision recorded in item 4).
-4. [ ] Founder: sign this ADR (Status → Accepted), record the visibility decision.
+4. [x] Founder signed this ADR (Accepted, 2026-06-12). Still open: record the visibility decision.
 5. [ ] Q4 extraction in migration-map order: ikigov → hardened-ai → x402 → treasury (schema-only).
 6. [ ] Rust CI lane: promote from manual trigger to push once validated on a Rust-equipped runner (family precedent: hardened-ai ci-zk lane).

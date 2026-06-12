@@ -8,7 +8,7 @@ Mandate: development-plan.md §6; session-4-evidence-library-adr.md. Scope disci
 
 Requirements:
 
-- R1 ADR deciding schema unification, language strategy, key management/rotation, verification semantics, versioning policy — **Delivered:** docs/adr/ADR-0001 (Proposed; founder signature pending). Founder pre-selected Python lib + Rust crate (2026-06-12).
+- R1 ADR deciding schema unification, language strategy, key management/rotation, verification semantics, versioning policy — **Delivered:** docs/adr/ADR-0001 (**Accepted, founder-signed 2026-06-12**). Founder pre-selected Python lib + Rust crate (2026-06-12).
 - R2 Schema + golden test vectors as the first commit; conformance tests before code — **Delivered:** schemas/ (evidence-ref@1 verbatim-frozen, trust-store@1), vectors/ (generated + byte-stability-checked by scripts/generate_vectors.py), Python suite green; Rust suite written, first run pending toolchain (see Open).
 - R3 CI to family standard (SAST, coverage gate, SBOM) — **Delivered:** ci.yml (ruff incl. S rules, pytest --cov fail_under=100, pip-audit, CycloneDX SBOM artifact, vector --check), codeql.yml (public-gated, family precedent), ci-rust.yml (manual until first green run, ci-zk precedent), dependabot (pip/cargo/actions).
 - R4 Migration map per consumer — **Delivered:** docs/MIGRATION.md (ikigov → hardened-ai → x402 → treasury schema-only).
@@ -30,7 +30,7 @@ Rejected "while we're at it" items (recorded, not built):
 
 ## Open / founder gates
 
-- [ ] Founder signs ADR-0001 (Status → Accepted).
+- [x] Founder signed ADR-0001 (Accepted, 2026-06-12).
 - [ ] Visibility decision recorded.
 - [ ] Rust lane first green run on a Rust-equipped runner, then promote ci-rust.yml to push/PR triggers.
 - [ ] Session 3 review trigger: if the x402 OEM-kit session changes the screening evidence surface, revisit ADR-0001 D1/D4 before Q4 extraction.
