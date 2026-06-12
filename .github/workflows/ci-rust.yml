@@ -3,12 +3,14 @@ name: Rust CI
 # Cross-language conformance lane: the Rust toolchain must reproduce the golden
 # vectors byte-for-byte (rust/tests/conformance.rs).
 #
-# MANUAL TRIGGER (workflow_dispatch) ONLY for now — family precedent is the
-# hardened-ai ci-zk lane: the development environment lacks a Rust toolchain, so
-# this lane has not yet run green locally; gating pushes on an unvalidated lane
-# produces spurious red CI. Run it once from the Actions tab; when green, promote
-# to push/pull_request (ADR-0001 action item 6).
+# Promoted to push/pull_request after validating green locally (fmt + clippy
+# -D warnings + conformance tests, 2026-06-12) — ADR-0001 action item 6.
+# workflow_dispatch retained for manual re-runs.
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch: {}
 
 permissions:

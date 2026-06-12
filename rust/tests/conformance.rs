@@ -15,7 +15,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 fn root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf()
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .to_path_buf()
 }
 
 fn load(rel: &str) -> Value {
@@ -27,7 +30,7 @@ fn load(rel: &str) -> Value {
 fn canonical_string(value: &Value) -> Result<String, String> {
     reject_floats(value)?;
     // BTreeMap-backed objects serialize with sorted keys; compact by default.
-    Ok(serde_json::to_string(value).map_err(|e| e.to_string())?)
+    serde_json::to_string(value).map_err(|e| e.to_string())
 }
 
 fn reject_floats(value: &Value) -> Result<(), String> {
@@ -65,35 +68,66 @@ fn canonical_json_vectors_reproduce() {
     }
     for case in doc["rejected"].as_array().unwrap() {
         let name = case["name"].as_str().unwrap();
-        assert!(canonical_string(&case["payload"]).is_err(), "case {name} must be rejected");
+        assert!(
+            canonical_string(&case["payload"]).is_err(),
+            "case {name} must be rejected"
+        );
     }
 }
 
 #[test]
 fn ed25519_golden_vector_reproduces_and_verifies() {
     let v = load("vectors/signing/ed25519-golden.json");
-    let priv_bytes: [u8; 32] =
-        hex::decode(v["private_key_hex"].as_str().unwrap()).unwrap().try_into().unwrap();
+    let priv_bytes: [u8; 32] = hex::decode(v["private_key_hex"].as_str().unwrap())
+        .unwrap()
+        .try_into()
+        .unwrap();
     let sk = SigningKey::from_bytes(&priv_bytes);
-    assert_eq!(hex::encode(sk.verifying_key().to_bytes()), v["public_key_hex"].as_str().unwrap());
+    assert_eq!(
+        hex::encode(sk.verifying_key().to_bytes()),
+        v["public_key_hex"].as_str().unwrap()
+    );
 
-    let msg = signing_message(v["content_hash"].as_str().unwrap(), v["signer"].as_str().unwrap());
+    let msg = signing_message(
+        v["content_hash"].as_str().unwrap(),
+        v["signer"].as_str().unwrap(),
+    );
     assert_eq!(msg, v["message_canonical"].as_str().unwrap());
 
     // Ed25519 is deterministic (RFC 8032) — the signature must match exactly.
     let sig = sk.sign(msg.as_bytes());
-    assert_eq!(hex::encode(sig.to_bytes()), v["signature_hex"].as_str().unwrap());
+    assert_eq!(
+        hex::encode(sig.to_bytes()),
+        v["signature_hex"].as_str().unwrap()
+    );
 
-    sk.verifying_key().verify(msg.as_bytes(), &sig).expect("golden vector must verify");
+    sk.verifying_key()
+        .verify(msg.as_bytes(), &sig)
+        .expect("golden vector must verify");
 }
 
 /// Reference fail-closed verifier: any failure is `false`, never a panic/error.
-fn verify_ed25519(content_hash: &str, signer: &str, signature_hex: &str, public_key_hex: &str) -> bool {
-    let Ok(pk_bytes) = hex::decode(public_key_hex) else { return false };
-    let Ok(pk_array) = <[u8; 32]>::try_from(pk_bytes) else { return false };
-    let Ok(pk) = VerifyingKey::from_bytes(&pk_array) else { return false };
-    let Ok(sig_bytes) = hex::decode(signature_hex) else { return false };
-    let Ok(sig_array) = <[u8; 64]>::try_from(sig_bytes) else { return false };
+fn verify_ed25519(
+    content_hash: &str,
+    signer: &str,
+    signature_hex: &str,
+    public_key_hex: &str,
+) -> bool {
+    let Ok(pk_bytes) = hex::decode(public_key_hex) else {
+        return false;
+    };
+    let Ok(pk_array) = <[u8; 32]>::try_from(pk_bytes) else {
+        return false;
+    };
+    let Ok(pk) = VerifyingKey::from_bytes(&pk_array) else {
+        return false;
+    };
+    let Ok(sig_bytes) = hex::decode(signature_hex) else {
+        return false;
+    };
+    let Ok(sig_array) = <[u8; 64]>::try_from(sig_bytes) else {
+        return false;
+    };
     let sig = Signature::from_bytes(&sig_array);
     let msg = signing_message(content_hash, signer);
     pk.verify(msg.as_bytes(), &sig).is_ok()
@@ -110,19 +144,24 @@ fn ed25519_tamper_cases_fail_closed() {
             case["public_key_hex"].as_str().unwrap(),
         );
         assert!(!verified, "tamper case must fail: {}", case["reason"]);
-        assert_eq!(case["verifies"].as_bool().unwrap(), false);
+        assert!(!case["verifies"].as_bool().unwrap());
     }
 }
 
 #[test]
 fn hmac_golden_vector_reproduces() {
     let v = load("vectors/signing/hmac-sha256-golden.json");
-    let msg = signing_message(v["content_hash"].as_str().unwrap(), v["signer"].as_str().unwrap());
+    let msg = signing_message(
+        v["content_hash"].as_str().unwrap(),
+        v["signer"].as_str().unwrap(),
+    );
     assert_eq!(msg, v["message_canonical"].as_str().unwrap());
-    let mut mac =
-        Hmac::<Sha256>::new_from_slice(v["key"].as_str().unwrap().as_bytes()).unwrap();
+    let mut mac = Hmac::<Sha256>::new_from_slice(v["key"].as_str().unwrap().as_bytes()).unwrap();
     mac.update(msg.as_bytes());
-    assert_eq!(hex::encode(mac.finalize().into_bytes()), v["signature_hex"].as_str().unwrap());
+    assert_eq!(
+        hex::encode(mac.finalize().into_bytes()),
+        v["signature_hex"].as_str().unwrap()
+    );
 }
 
 #[test]
@@ -142,12 +181,23 @@ fn envelope_end_to_end_verifies() {
     let pub_hex = notes["trust_store"][signer]["public_key"].as_str().unwrap();
     let sig_hex = evidence_ref["signature"].as_str().unwrap();
     assert!(verify_ed25519(expected_ch, signer, sig_hex, pub_hex));
-    assert!(!verify_ed25519(expected_ch, "evil-signer", sig_hex, pub_hex));
+    assert!(!verify_ed25519(
+        expected_ch,
+        "evil-signer",
+        sig_hex,
+        pub_hex
+    ));
 }
 
 #[test]
 fn schema_constants_match_python_side() {
-    assert_eq!(presidio_evidence::EVIDENCE_REF_SCHEMA_ID, "presidio-hardened/evidence-ref@1");
+    assert_eq!(
+        presidio_evidence::EVIDENCE_REF_SCHEMA_ID,
+        "presidio-hardened/evidence-ref@1"
+    );
     assert_eq!(presidio_evidence::EVIDENCE_REF_FIELDS.len(), 8);
-    assert_eq!(presidio_evidence::SIGNING_ALGORITHMS, ["ed25519", "hmac-sha256"]);
+    assert_eq!(
+        presidio_evidence::SIGNING_ALGORITHMS,
+        ["ed25519", "hmac-sha256"]
+    );
 }
