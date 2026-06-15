@@ -8,7 +8,7 @@
 //! `json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False)`.
 
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs;
