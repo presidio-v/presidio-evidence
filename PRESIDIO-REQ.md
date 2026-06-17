@@ -35,9 +35,18 @@ Rejected "while we're at it" items (recorded, not built):
 - [ ] Rust lane first green run on a Rust-equipped runner, then promote ci-rust.yml to push/PR triggers.
 - [ ] Session 3 review trigger: if the x402 OEM-kit session changes the screening evidence surface, revisit ADR-0001 D1/D4 before Q4 extraction.
 
-## v0.2.0 (planned, Q4) — extraction
+## v0.2.0 — extraction (delivered)
 
-Python implementation (canonicalization, signing, verification, trust store) extracted from hardened-ai/ikigov; both consumers migrate per docs/MIGRATION.md; package data ships schemas+vectors.
+Python implementation extracted from hardened-ai/ikigov and shipped in the package, wire-format unchanged (golden vectors prove it byte-for-byte):
+
+- **Layer 0** — `canonical_bytes` (strict: sorted keys, `(",",":")`, UTF-8, floats rejected), `sha256_hex`, `content_hash`.
+- **Layer 1** — `signing_message` (signer-bound), `sign_evidence`/`sign_ed25519`/`sign_hmac`, `verify_ed25519`/`verify_hmac` (fail-closed). Ed25519 behind the optional `[crypto]` extra; HMAC + Layer 0 are stdlib-only (runtime `dependencies = []`).
+- **Refs & trust** — `EvidenceRef`, `parse_document`/`load_evidence`, `build_envelope`, `load_trust_store` (bare-string + object entries, key rotation), `verify_ref`. `item_id` domain validation stays consumer-side by design.
+- Conformance suite re-pointed at the library (`conftest.canonical_bytes` is now the shipped function); 100% coverage gate retained.
+
+Consumers migrate per docs/MIGRATION.md (ikigov first, then hardened-ai). First proof point: `presidio-hardened-scoutsuite` (a producer) emits envelopes that ikigov-assess verifies via this contract; its 0.29.0 interop golden cross-checks the same wire format.
+
+Deferred to a follow-up (not blocking consumers, which vendor their own copies today): shipping `schemas/` + `vectors/` as importable package data, and the Rust Layer-0 implementation (v0.3.0, for treasury).
 
 ## v0.3.0 (planned) — x402 binding + Rust Layer 0
 

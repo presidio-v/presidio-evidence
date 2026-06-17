@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "presidio-evidence"
-version = "0.1.0"
+version = "0.2.0"
 description = "Shared evidence substrate for the presidio-hardened-* suite: pre-execution gating + signed evidence + fail-closed verification. Schema and golden test vectors are the contract; implementations conform to them. Independent of Microsoft Presidio."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -31,6 +31,9 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+# Ed25519 signing/verification. HMAC-SHA256 and Layer 0 are stdlib-only, so the
+# runtime stays dependency-free; consumers needing Ed25519 install this extra.
+crypto = ["cryptography>=42"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
