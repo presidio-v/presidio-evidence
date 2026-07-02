@@ -189,6 +189,80 @@ fn envelope_end_to_end_verifies() {
     ));
 }
 
+/// ADR-0002 provenance-parents + ikigov T-B4: a parents-bearing payload wrapped
+/// in the frozen evidence-ref@1 envelope must recompute its content hash and
+/// verify, for both new golden vectors.
+fn assert_provenance_vector_verifies(kind: &str) {
+    let envelope = load(&format!("vectors/{kind}/valid-envelope.json"));
+    let notes = load(&format!("vectors/{kind}/valid-envelope.notes.json"));
+    let evidence_ref = &envelope["evidence"][0];
+
+    // content_hash recomputes from the signed content; the Layer-0 producer
+    // record binds the same content and hash.
+    let content = canonical_string(&notes["signed_content"]).unwrap();
+    let expected_ch = notes["expected_content_hash"].as_str().unwrap();
+    assert_eq!(sha256_hex(content.as_bytes()), expected_ch, "{kind} hash");
+    assert_eq!(evidence_ref["content_hash"].as_str().unwrap(), expected_ch);
+    assert_eq!(
+        notes["layer0_reading"]["content_hash"].as_str().unwrap(),
+        expected_ch
+    );
+    assert_eq!(
+        notes["layer0_reading"]["attested_content"],
+        notes["signed_content"]
+    );
+
+    // parents are inside the hashed content and follow the family hex rule.
+    for parent in notes["signed_content"]["parents"].as_array().unwrap() {
+        let p = parent.as_str().unwrap();
+        assert!((8..=128).contains(&p.len()), "{kind} parent length");
+        assert!(p
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)));
+    }
+
+    // Signature verifies against the trust-store key; signer replay fails.
+    let signer = evidence_ref["signer"].as_str().unwrap();
+    let pub_hex = notes["trust_store"][signer]["public_key"].as_str().unwrap();
+    let sig_hex = evidence_ref["signature"].as_str().unwrap();
+    assert!(
+        verify_ed25519(expected_ch, signer, sig_hex, pub_hex),
+        "{kind} verify"
+    );
+    assert!(!verify_ed25519(
+        expected_ch,
+        "evil-signer",
+        sig_hex,
+        pub_hex
+    ));
+}
+
+#[test]
+fn training_run_provenance_vector_verifies() {
+    assert_provenance_vector_verifies("training-run");
+}
+
+#[test]
+fn workshop_attestation_provenance_vector_verifies() {
+    assert_provenance_vector_verifies("workshop-attestation");
+}
+
+#[test]
+fn attestation_parents_point_at_training_run_payload() {
+    // The provenance DAG edge (ADR-0002 / L-EV-6): the workshop attestation
+    // attests, and lists as its parent, the training-run payload's content hash.
+    let tr_notes = load("vectors/training-run/valid-envelope.notes.json");
+    let wa_notes = load("vectors/workshop-attestation/valid-envelope.notes.json");
+    let training_ch = tr_notes["expected_content_hash"].as_str().unwrap();
+    let attested = &wa_notes["signed_content"];
+    assert_eq!(attested["attests"].as_str().unwrap(), training_ch);
+    assert_eq!(attested["parents"], serde_json::json!([training_ch]));
+    assert_eq!(
+        wa_notes["attests_parent_content_hash"].as_str().unwrap(),
+        training_ch
+    );
+}
+
 #[test]
 fn schema_constants_match_python_side() {
     assert_eq!(

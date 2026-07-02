@@ -294,6 +294,136 @@ def build() -> dict[pathlib.Path, dict]:
     ]:
         out[V / f"trust-store/{name}.json"] = {"_reason": why, "document": doc}
 
+    # ------------------------------------------------------------------
+    # Provenance-parents convention (ADR-0002, Accepted 2026-07-02) and the
+    # ikigov-assess T-B4 workshop-attestation. Two append-only golden vectors
+    # that also demonstrate the DAG edge: the attestation's `parents` (and
+    # `attests`) point at the training-run payload's content hash. Both wrap a
+    # parents-bearing payload in the frozen evidence-ref@1 envelope (untouched;
+    # lineage lives inside the signed attested_content per ADR-0002 P1), signed
+    # with the family test key (PRIV 01*32). Signer identity is a per-producer
+    # label bound into the signed message; the key is the shared test fixture.
+    ATX_SIGNER = "presidio-hardened-arch-translucency"
+    ASSESSOR_SIGNER = "presidio-hardened-ikigov-assess"
+    GOLDEN_PARENT = "a" * 64  # matches arch-translucency test _PARENT
+
+    # (a) presidio-hardened/training-run@1 Layer-0 payload, parents-bearing.
+    # attested_content shape and key set match arch-translucency's
+    # build_training_run_reading + its test_training_run_content_hash_is_stable
+    # golden-ish vector (evidence_producer.py); this vector supersedes that
+    # self-generated hash test as the family reference.
+    tr_content = {
+        "run_id": "golden-run",
+        "strategy": "pipeline",
+        "degree": 4,
+        "samples_per_second": 250,
+        "duration_s": 7200,
+        "device_count": 4,
+        "parents": [GOLDEN_PARENT],
+    }
+    tr_ch = hashlib.sha256(cb(tr_content)).hexdigest()
+    tr_sig = sk.sign(cb({"content_hash": tr_ch, "signer": ATX_SIGNER})).hex()
+    tr_reading = {
+        "schema": "presidio-hardened/training-run@1",
+        "attested_content": tr_content,
+        "content_hash": tr_ch,
+        "source": ATX_SIGNER,
+        "source_version": "test",
+        "generated_at": "2026-07-02T00:00:00+00:00",
+    }
+    tr_ref = {
+        "item_id": "training-run/golden-run",
+        "source": ATX_SIGNER,
+        "source_version": "test",
+        "ledger_ref": "atx-ledger:seq/1",
+        "content_hash": tr_ch,
+        "signer": ATX_SIGNER,
+        "signature": tr_sig,
+        "claimed_at": "2026-07-02T00:00:00+00:00",
+    }
+    out[V / "training-run/valid-envelope.json"] = {
+        "schema": "presidio-hardened/evidence-ref@1",
+        "use_case": "training-run-provenance",
+        "source": ATX_SIGNER,
+        "source_version": "test",
+        "generated_at": "2026-07-02T00:00:00+00:00",
+        "evidence": [tr_ref],
+    }
+    out[V / "training-run/valid-envelope.notes.json"] = {
+        "description": (
+            "Companion to training-run/valid-envelope.json. ADR-0002 "
+            "parents-bearing presidio-hardened/training-run@1 Layer-0 payload "
+            "(shape per arch-translucency build_training_run_reading). "
+            "layer0_reading is the unsigned producer record; signed_content is "
+            "its attested_content, whose canonical sha256 is expected_content_hash "
+            "= evidence[0].content_hash. `parents` is inside the hashed content, "
+            "so rewiring lineage breaks both the hash and the signature."
+        ),
+        "layer0_reading": tr_reading,
+        "signed_content": tr_content,
+        "expected_content_hash": tr_ch,
+        "verifies_with_public_key_hex": pub,
+        "trust_store": {ATX_SIGNER: {"alg": "ed25519", "public_key": pub}},
+    }
+
+    # (b) presidio-hardened/workshop-attestation@1 — the schema freeze for @1
+    # (ikigov-assess PRESIDIO-REQ v0.22.0 T-B4). ASCII-only, float-free, no
+    # integers. `attests` and `parents[0]` both point at (a)'s content hash,
+    # activating the provenance DAG (edge documents, evidence backlog L-EV-6).
+    wa_content = {
+        "role": "assessor",
+        "attests": tr_ch,
+        "parents": [tr_ch],
+        "engagement": "eng-golden-001",
+        "scope": "facilitation + methodology conformance",
+        "workshop_date": "2026-07-02",
+    }
+    wa_ch = hashlib.sha256(cb(wa_content)).hexdigest()
+    wa_sig = sk.sign(cb({"content_hash": wa_ch, "signer": ASSESSOR_SIGNER})).hex()
+    wa_reading = {
+        "schema": "presidio-hardened/workshop-attestation@1",
+        "attested_content": wa_content,
+        "content_hash": wa_ch,
+        "source": ASSESSOR_SIGNER,
+        "source_version": "test",
+        "generated_at": "2026-07-02T00:00:00+00:00",
+    }
+    wa_ref = {
+        "item_id": "workshop-attestation/eng-golden-001",
+        "source": ASSESSOR_SIGNER,
+        "source_version": "test",
+        "ledger_ref": "iga-ledger:seq/1",
+        "content_hash": wa_ch,
+        "signer": ASSESSOR_SIGNER,
+        "signature": wa_sig,
+        "claimed_at": "2026-07-02T00:00:00+00:00",
+    }
+    out[V / "workshop-attestation/valid-envelope.json"] = {
+        "schema": "presidio-hardened/evidence-ref@1",
+        "use_case": "workshop-attestation",
+        "source": ASSESSOR_SIGNER,
+        "source_version": "test",
+        "generated_at": "2026-07-02T00:00:00+00:00",
+        "evidence": [wa_ref],
+    }
+    out[V / "workshop-attestation/valid-envelope.notes.json"] = {
+        "description": (
+            "Companion to workshop-attestation/valid-envelope.json. Schema freeze "
+            "for presidio-hardened/workshop-attestation@1 (ikigov-assess T-B4): a "
+            "presidio-as-assessor countersignature. `attests` and `parents[0]` are "
+            "the content_hash of training-run/valid-envelope.json's payload — the "
+            "DAG edge (ADR-0002). signed_content's canonical sha256 is "
+            "expected_content_hash = evidence[0].content_hash. ASCII-only, "
+            "float-free, no integers."
+        ),
+        "layer0_reading": wa_reading,
+        "signed_content": wa_content,
+        "expected_content_hash": wa_ch,
+        "attests_parent_content_hash": tr_ch,
+        "verifies_with_public_key_hex": pub,
+        "trust_store": {ASSESSOR_SIGNER: {"alg": "ed25519", "public_key": pub}},
+    }
+
     return out
 
 

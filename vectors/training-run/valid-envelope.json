@@ -1,0 +1,19 @@
+{
+  "schema": "presidio-hardened/evidence-ref@1",
+  "use_case": "training-run-provenance",
+  "source": "presidio-hardened-arch-translucency",
+  "source_version": "test",
+  "generated_at": "2026-07-02T00:00:00+00:00",
+  "evidence": [
+    {
+      "item_id": "training-run/golden-run",
+      "source": "presidio-hardened-arch-translucency",
+      "source_version": "test",
+      "ledger_ref": "atx-ledger:seq/1",
+      "content_hash": "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378",
+      "signer": "presidio-hardened-arch-translucency",
+      "signature": "b60c6506e619bfc5dc2c72aeb7e462c03061e50255de0967badf44348cb5645226efc87e6264afa432f991c16840083d6fb42fa6e751f9ace39111293f957400",
+      "claimed_at": "2026-07-02T00:00:00+00:00"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "description": "Companion to training-run/valid-envelope.json. ADR-0002 parents-bearing presidio-hardened/training-run@1 Layer-0 payload (shape per arch-translucency build_training_run_reading). layer0_reading is the unsigned producer record; signed_content is its attested_content, whose canonical sha256 is expected_content_hash = evidence[0].content_hash. `parents` is inside the hashed content, so rewiring lineage breaks both the hash and the signature.",
+  "layer0_reading": {
+    "schema": "presidio-hardened/training-run@1",
+    "attested_content": {
+      "run_id": "golden-run",
+      "strategy": "pipeline",
+      "degree": 4,
+      "samples_per_second": 250,
+      "duration_s": 7200,
+      "device_count": 4,
+      "parents": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ]
+    },
+    "content_hash": "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378",
+    "source": "presidio-hardened-arch-translucency",
+    "source_version": "test",
+    "generated_at": "2026-07-02T00:00:00+00:00"
+  },
+  "signed_content": {
+    "run_id": "golden-run",
+    "strategy": "pipeline",
+    "degree": 4,
+    "samples_per_second": 250,
+    "duration_s": 7200,
+    "device_count": 4,
+    "parents": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ]
+  },
+  "expected_content_hash": "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378",
+  "verifies_with_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "trust_store": {
+    "presidio-hardened-arch-translucency": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  }
+}

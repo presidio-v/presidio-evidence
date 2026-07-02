@@ -1,0 +1,39 @@
+{
+  "description": "Companion to workshop-attestation/valid-envelope.json. Schema freeze for presidio-hardened/workshop-attestation@1 (ikigov-assess T-B4): a presidio-as-assessor countersignature. `attests` and `parents[0]` are the content_hash of training-run/valid-envelope.json's payload — the DAG edge (ADR-0002). signed_content's canonical sha256 is expected_content_hash = evidence[0].content_hash. ASCII-only, float-free, no integers.",
+  "layer0_reading": {
+    "schema": "presidio-hardened/workshop-attestation@1",
+    "attested_content": {
+      "role": "assessor",
+      "attests": "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378",
+      "parents": [
+        "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378"
+      ],
+      "engagement": "eng-golden-001",
+      "scope": "facilitation + methodology conformance",
+      "workshop_date": "2026-07-02"
+    },
+    "content_hash": "4d078c2e27c41cd31c57c8f929ae699af894e18bcb8075aec8b60d0f8b261b90",
+    "source": "presidio-hardened-ikigov-assess",
+    "source_version": "test",
+    "generated_at": "2026-07-02T00:00:00+00:00"
+  },
+  "signed_content": {
+    "role": "assessor",
+    "attests": "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378",
+    "parents": [
+      "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378"
+    ],
+    "engagement": "eng-golden-001",
+    "scope": "facilitation + methodology conformance",
+    "workshop_date": "2026-07-02"
+  },
+  "expected_content_hash": "4d078c2e27c41cd31c57c8f929ae699af894e18bcb8075aec8b60d0f8b261b90",
+  "attests_parent_content_hash": "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378",
+  "verifies_with_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "trust_store": {
+    "presidio-hardened-ikigov-assess": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  }
+}

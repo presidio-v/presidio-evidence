@@ -1,0 +1,19 @@
+{
+  "schema": "presidio-hardened/evidence-ref@1",
+  "use_case": "workshop-attestation",
+  "source": "presidio-hardened-ikigov-assess",
+  "source_version": "test",
+  "generated_at": "2026-07-02T00:00:00+00:00",
+  "evidence": [
+    {
+      "item_id": "workshop-attestation/eng-golden-001",
+      "source": "presidio-hardened-ikigov-assess",
+      "source_version": "test",
+      "ledger_ref": "iga-ledger:seq/1",
+      "content_hash": "4d078c2e27c41cd31c57c8f929ae699af894e18bcb8075aec8b60d0f8b261b90",
+      "signer": "presidio-hardened-ikigov-assess",
+      "signature": "edc388eda691d02669816a3ea1597727f2ebb7ae8e40b10e52337d11a549664eb8f5681dc6514265a22859588195ca7d11565ec6f88bec9b611b678d44f7c30d",
+      "claimed_at": "2026-07-02T00:00:00+00:00"
+    }
+  ]
+}
