@@ -275,3 +275,116 @@ fn schema_constants_match_python_side() {
         ["ed25519", "hmac-sha256"]
     );
 }
+
+// ── Consumer coverage arc (2026-07-03): ikigov / x402 / treasury vectors ─────
+
+#[test]
+fn slo_reading_vector_verifies() {
+    // The x402 consumer chain: pat Layer-0 reading → bridge-signed
+    // evidence-ref@1 envelope → SLO payment broker verify_ref.
+    let envelope = load("vectors/slo-reading/valid-envelope.json");
+    let notes = load("vectors/slo-reading/valid-envelope.notes.json");
+    let evidence_ref = &envelope["evidence"][0];
+
+    let content = canonical_string(&notes["signed_content"]).unwrap();
+    let expected_ch = notes["expected_content_hash"].as_str().unwrap();
+    assert_eq!(sha256_hex(content.as_bytes()), expected_ch, "slo hash");
+    assert_eq!(evidence_ref["content_hash"].as_str().unwrap(), expected_ch);
+    assert_eq!(
+        notes["layer0_reading"]["attested_content"],
+        notes["signed_content"]
+    );
+
+    // Degradation semantics: value > threshold (the broker's precondition).
+    let value = notes["signed_content"]["value"].as_i64().unwrap();
+    let threshold = notes["signed_content"]["threshold"].as_i64().unwrap();
+    assert!(value > threshold);
+    assert_eq!(notes["degraded"], serde_json::json!(true));
+
+    // Signature verifies against the trust-store key (family Layer-1 message).
+    let signer = evidence_ref["signer"].as_str().unwrap();
+    let pub_hex = notes["trust_store"][signer]["public_key"].as_str().unwrap();
+    let vk_bytes: [u8; 32] = hex::decode(pub_hex).unwrap().try_into().unwrap();
+    let vk = VerifyingKey::from_bytes(&vk_bytes).unwrap();
+    let sig_bytes: [u8; 64] = hex::decode(evidence_ref["signature"].as_str().unwrap())
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let sig = Signature::from_bytes(&sig_bytes);
+    let message = signing_message(expected_ch, signer);
+    vk.verify(message.as_bytes(), &sig).expect("slo signature");
+    // Cross-signer replay must fail closed.
+    let wrong = signing_message(expected_ch, "not-the-signer");
+    assert!(vk.verify(wrong.as_bytes(), &sig).is_err());
+}
+
+#[test]
+fn workshop_leavebehind_owner_signature_verifies() {
+    // ikigov T-B4 R1 consumer vector. Two profiles pinned: the manifest's
+    // canonical sha256 (the attestation DAG-edge target) and the OWNER
+    // signature over the RAW canonical manifest bytes (manifest.sig profile,
+    // deliberately NOT the family {content_hash, signer} message).
+    let manifest = load("vectors/workshop-leavebehind/valid-manifest.json");
+    let notes = load("vectors/workshop-leavebehind/valid-manifest.notes.json");
+
+    let manifest_canonical = canonical_string(&manifest).unwrap();
+    let expected_ch = notes["expected_content_hash"].as_str().unwrap();
+    assert_eq!(sha256_hex(manifest_canonical.as_bytes()), expected_ch);
+    assert_eq!(notes["attestation_would_attest"].as_str().unwrap(), expected_ch);
+
+    // Owner pubkey is attested INSIDE the signed content and must match the
+    // verifying key (ikigov's owner-consistency check).
+    let embedded_pub = manifest["owner"]["public_key"].as_str().unwrap();
+    let notes_pub = notes["verifies_with_public_key_hex"].as_str().unwrap();
+    assert_eq!(embedded_pub, notes_pub);
+
+    let vk_bytes: [u8; 32] = hex::decode(notes_pub).unwrap().try_into().unwrap();
+    let vk = VerifyingKey::from_bytes(&vk_bytes).unwrap();
+    let sig_bytes: [u8; 64] = hex::decode(notes["owner_signature"].as_str().unwrap())
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let sig = Signature::from_bytes(&sig_bytes);
+    vk.verify(manifest_canonical.as_bytes(), &sig)
+        .expect("owner signature over raw manifest bytes");
+
+    // The customer test fixture (priv 02*32) reproduces the signature —
+    // deterministic Ed25519, so this pins the wire format end-to-end.
+    let priv_hex = notes["customer_private_key_hex_test_fixture"]
+        .as_str()
+        .unwrap();
+    let sk_bytes: [u8; 32] = hex::decode(priv_hex).unwrap().try_into().unwrap();
+    let sk = SigningKey::from_bytes(&sk_bytes);
+    assert_eq!(
+        hex::encode(sk.sign(manifest_canonical.as_bytes()).to_bytes()),
+        notes["owner_signature"].as_str().unwrap()
+    );
+
+    // Tampered manifest fails closed.
+    let mut bad = manifest.clone();
+    bad["risk_class"] = serde_json::json!("low");
+    let bad_canonical = canonical_string(&bad).unwrap();
+    assert!(vk.verify(bad_canonical.as_bytes(), &sig).is_err());
+}
+
+#[test]
+fn treasury_checkpoint_id_reproduces() {
+    // Treasury consumer vector — Layer 0 ONLY (ADR-0001 D1): checkpoint
+    // identity is content addressing over the canonical envelope, including
+    // null-valued optionals and i64 nanosecond timestamps. No signature.
+    let envelope = load("vectors/treasury-checkpoint/valid-checkpoint.json");
+    let notes = load("vectors/treasury-checkpoint/valid-checkpoint.notes.json");
+
+    let canonical = canonical_string(&envelope).unwrap();
+    assert_eq!(
+        sha256_hex(canonical.as_bytes()),
+        notes["expected_checkpoint_id"].as_str().unwrap()
+    );
+    assert!(notes["signature"].is_null());
+    assert_eq!(notes["layer"], serde_json::json!(0));
+
+    // The strict profile still rejects floats in checkpoint-shaped payloads.
+    let mut bad = envelope.clone();
+    bad["as_of"] = serde_json::json!(1.5);
+    assert!(canonical_string(&bad).is_err());
+}

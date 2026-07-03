@@ -1,8 +1,8 @@
 # presidio-evidence
 
-**Internal shared library — PRIVATE until founder clearance (ADR-0001 D6).**
+The fundament of the presidio suite: the signed-evidence substrate every component writes to and verifies against — one normative contract for pre-execution gating, signed evidence, fail-closed verification, and provenance-parent chaining (ADR-0002). PRIVATE until founder clearance (ADR-0001 D6). Independent of Microsoft Presidio.
 
-The evidence substrate for the `presidio-hardened-*` suite: one normative home for the pattern *pre-execution gating + signed evidence + fail-closed verification*, extracted from four production implementations before they drift. Independent of Microsoft Presidio.
+Extracted from four production implementations before they could drift; now six family repos conform (ikigov-assess, hardened-ai, x402, treasury, arch-translucency, scoutsuite). The provenance-parents convention chains classification → gate decision → training run → runtime posture → payment into one verifiable DAG — regulatory traceability as a data structure, not process documentation.
 
 **The contract is `schemas/` + `vectors/`, not the code.** Both implementations (Python package, Rust crate) prove conformance against the same golden vectors; consumers migrate by pointing their existing tests at these vectors first, imports second.
 

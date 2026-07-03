@@ -1,0 +1,11 @@
+{
+  "schema": "treasury-close/checkpoint/v1",
+  "tenant": "acme",
+  "period": "2026Q2",
+  "as_of": 1780000000000000000,
+  "sealed_at": 1780000000000000100,
+  "state_root": "0505050505050505050505050505050505050505050505050505050505050505",
+  "supersedes": null,
+  "reason": null,
+  "materiality_memo": null
+}

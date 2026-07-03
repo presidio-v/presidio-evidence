@@ -1,0 +1,19 @@
+{
+  "schema": "presidio-hardened/evidence-ref@1",
+  "use_case": "slo-degradation",
+  "source": "presidio-hardened-arch-translucency",
+  "source_version": "test",
+  "generated_at": "2026-07-02T00:00:00+00:00",
+  "evidence": [
+    {
+      "item_id": "SLO-DEGRADED",
+      "source": "presidio-hardened-arch-translucency",
+      "source_version": "test",
+      "ledger_ref": "arch-translucency:obs",
+      "content_hash": "cc0d5b97d442aa7afd1b9e33aabb952c5389381fea954256855fece2678580c0",
+      "signer": "presidio-hardened-arch-translucency",
+      "signature": "486280c962830a8291b72caa67e0c9409849dbc66fc4f3c10b60de3aea9a3ca4b347a234f6dc70dd230c6612fc437468c5cfed516f19fdd26a1c2472b308b709",
+      "claimed_at": "2026-07-02T00:00:00+00:00"
+    }
+  ]
+}

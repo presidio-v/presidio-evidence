@@ -1,0 +1,6 @@
+{
+  "description": "Companion to treasury-checkpoint/valid-checkpoint.json. The treasury consumer vector, Layer 0 ONLY (ADR-0001 D1): treasury-close/checkpoint/v1 checkpoint identity = sha256 over the canonical envelope (sorted keys, compact separators, floats rejected, nulls preserved, i64 nanosecond timestamps). No signature by design — treasury's trust model is content addressing + dual-control approval (preparer != approver), not key material. Shape matches treasury-close checkpoint.rs compute_id.",
+  "expected_checkpoint_id": "ef8fe62a1e736ad820653bf65d8fba5aa5f5134ced7011c06252ada7ab297a54",
+  "layer": 0,
+  "signature": null
+}

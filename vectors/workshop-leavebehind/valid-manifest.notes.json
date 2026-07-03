@@ -1,0 +1,15 @@
+{
+  "description": "Companion to workshop-leavebehind/valid-manifest.json. Owner-signed presidio-hardened/workshop-leavebehind@1 manifest (ikigov-assess T-B4 R1: customer anchors). The `owner` block is additive-optional within @1 (ADR-0001 D5) and lives INSIDE the signed content. Two profiles pinned: expected_content_hash is the canonical sha256 of the manifest (the value a workshop-attestation@1 `attests` would carry — the ADR-0002 DAG edge target); owner_signature is Ed25519 over the RAW canonical manifest bytes (manifest.sig profile, not the family {content_hash, signer} message). Customer test key: priv 02*32 — a cross-repo fixture, not a secret.",
+  "expected_content_hash": "4942eeec7ac533e0d6d4b76cc237ea6cabc95923680697369e1fea2d9009dd32",
+  "owner_signature": "df3d73814c3bae9de0b3013182e0c47728cb3d394ca72dd57732eaf9fb26be36a2a0de7e52d814d5a91308b5fd952550a03a16fa9c5455a67386358f6fd9cb0b",
+  "manifest_sig_file": {
+    "alg": "ed25519",
+    "role": "owner",
+    "signer": "Golden Customer GmbH",
+    "signature": "df3d73814c3bae9de0b3013182e0c47728cb3d394ca72dd57732eaf9fb26be36a2a0de7e52d814d5a91308b5fd952550a03a16fa9c5455a67386358f6fd9cb0b"
+  },
+  "owner_signs_message": "raw canonical manifest bytes",
+  "verifies_with_public_key_hex": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+  "customer_private_key_hex_test_fixture": "0202020202020202020202020202020202020202020202020202020202020202",
+  "attestation_would_attest": "4942eeec7ac533e0d6d4b76cc237ea6cabc95923680697369e1fea2d9009dd32"
+}

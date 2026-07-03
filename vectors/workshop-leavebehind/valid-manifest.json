@@ -1,0 +1,30 @@
+{
+  "schema": "presidio-hardened/workshop-leavebehind@1",
+  "tool": "presidio-hardened-ikigov-assess",
+  "tool_version": "test",
+  "use_case_id": "golden-uc",
+  "cell": "T2-L3",
+  "risk_class": "high",
+  "lang": "de",
+  "generated_at": "2026-07-02T00:00:00Z",
+  "pack": {
+    "framework_id": "iki-gov",
+    "version": "test",
+    "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "artifacts": {
+    "report.de.md": {
+      "sha256": "31c83eac97c3d2e1080246965f1d407e06db3989af3e3ce5291bb4f8c94362b4"
+    },
+    "report.json": {
+      "sha256": "156b4351c101549b8910c00fa71ff19bfc2eb9f997a8c2a85a3ca4c9da9aa652"
+    }
+  },
+  "signed": true,
+  "UNSIGNED": false,
+  "owner": {
+    "signer": "Golden Customer GmbH",
+    "public_key": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+    "signed_at": "2026-07-02T00:00:00+00:00"
+  }
+}

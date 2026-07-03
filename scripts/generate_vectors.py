@@ -424,6 +424,176 @@ def build() -> dict[pathlib.Path, dict]:
         "trust_store": {ASSESSOR_SIGNER: {"alg": "ed25519", "public_key": pub}},
     }
 
+    # ------------------------------------------------------------------
+    # Consumer coverage arc (2026-07-03): one golden vector per consumer
+    # surface that previously had none. Appended after the Rust lane's first
+    # green run (ADR-0001 D2 satisfied — both suites gate every vector).
+    # All payloads stay inside the proven conformance envelope: ASCII-only,
+    # float-free, integers within i64.
+    # ------------------------------------------------------------------
+
+    # (c) ikigov-assess: presidio-hardened/workshop-leavebehind@1, OWNER-signed
+    # (T-B4 R1). Two profiles coexist by design and this vector pins both:
+    #   - the manifest's canonical sha256 (what a workshop-attestation@1
+    #     `attests`/`parents[0]` references — the DAG edge target), and
+    #   - the OWNER signature: Ed25519 over the RAW canonical manifest bytes
+    #     (T-B3 manifest.sig profile; NOT the family {content_hash, signer}
+    #     message — the manifest is a document the customer signs whole,
+    #     not an evidence ref).
+    # The customer key is a second well-known test fixture: priv 02*32.
+    CUSTOMER_PRIV = "02" * 32
+    csk = ed25519.Ed25519PrivateKey.from_private_bytes(bytes.fromhex(CUSTOMER_PRIV))
+    customer_pub = csk.public_key().public_bytes_raw().hex()
+    wl_manifest = {
+        "schema": "presidio-hardened/workshop-leavebehind@1",
+        "tool": "presidio-hardened-ikigov-assess",
+        "tool_version": "test",
+        "use_case_id": "golden-uc",
+        "cell": "T2-L3",
+        "risk_class": "high",
+        "lang": "de",
+        "generated_at": "2026-07-02T00:00:00Z",
+        "pack": {
+            "framework_id": "iki-gov",
+            "version": "test",
+            "content_hash": "b" * 64,
+        },
+        "artifacts": {
+            "report.de.md": {"sha256": hashlib.sha256(b"golden report md").hexdigest()},
+            "report.json": {"sha256": hashlib.sha256(b"golden report json").hexdigest()},
+        },
+        "signed": True,
+        "UNSIGNED": False,
+        "owner": {
+            "signer": "Golden Customer GmbH",
+            "public_key": customer_pub,
+            "signed_at": "2026-07-02T00:00:00+00:00",
+        },
+    }
+    wl_bytes = cb(wl_manifest)
+    wl_ch = hashlib.sha256(wl_bytes).hexdigest()
+    wl_owner_sig = csk.sign(wl_bytes).hex()
+    out[V / "workshop-leavebehind/valid-manifest.json"] = wl_manifest
+    out[V / "workshop-leavebehind/valid-manifest.notes.json"] = {
+        "description": (
+            "Companion to workshop-leavebehind/valid-manifest.json. Owner-signed "
+            "presidio-hardened/workshop-leavebehind@1 manifest (ikigov-assess "
+            "T-B4 R1: customer anchors). The `owner` block is additive-optional "
+            "within @1 (ADR-0001 D5) and lives INSIDE the signed content. Two "
+            "profiles pinned: expected_content_hash is the canonical sha256 of "
+            "the manifest (the value a workshop-attestation@1 `attests` would "
+            "carry — the ADR-0002 DAG edge target); owner_signature is Ed25519 "
+            "over the RAW canonical manifest bytes (manifest.sig profile, not "
+            "the family {content_hash, signer} message). Customer test key: "
+            "priv 02*32 — a cross-repo fixture, not a secret."
+        ),
+        "expected_content_hash": wl_ch,
+        "owner_signature": wl_owner_sig,
+        "manifest_sig_file": {
+            "alg": "ed25519",
+            "role": "owner",
+            "signer": "Golden Customer GmbH",
+            "signature": wl_owner_sig,
+        },
+        "owner_signs_message": "raw canonical manifest bytes",
+        "verifies_with_public_key_hex": customer_pub,
+        "customer_private_key_hex_test_fixture": CUSTOMER_PRIV,
+        "attestation_would_attest": wl_ch,
+    }
+
+    # (d) x402: presidio-hardened/slo-reading@1 Layer-0 degradation reading +
+    # its signed evidence-ref@1 envelope — the pat -> signing-bridge -> x402
+    # SLO payment broker chain (v0.17.0/v0.7.0). item_id and ledger_ref match
+    # arch-translucency build_slo_evidence exactly; x402's
+    # ArchTranslucencyAdapter verifies this envelope fail-closed before paying.
+    slo_content = {
+        "slo": "p99_latency_ms",
+        "value": 420,
+        "threshold": 200,
+        "window": "5m",
+    }
+    slo_ch = hashlib.sha256(cb(slo_content)).hexdigest()
+    slo_sig = sk.sign(cb({"content_hash": slo_ch, "signer": ATX_SIGNER})).hex()
+    slo_reading = {
+        "schema": "presidio-hardened/slo-reading@1",
+        "attested_content": slo_content,
+        "content_hash": slo_ch,
+        "source": ATX_SIGNER,
+        "source_version": "test",
+        "generated_at": "2026-07-02T00:00:00+00:00",
+    }
+    slo_ref = {
+        "item_id": "SLO-DEGRADED",
+        "source": ATX_SIGNER,
+        "source_version": "test",
+        "ledger_ref": "arch-translucency:obs",
+        "content_hash": slo_ch,
+        "signer": ATX_SIGNER,
+        "signature": slo_sig,
+        "claimed_at": "2026-07-02T00:00:00+00:00",
+    }
+    out[V / "slo-reading/valid-envelope.json"] = {
+        "schema": "presidio-hardened/evidence-ref@1",
+        "use_case": "slo-degradation",
+        "source": ATX_SIGNER,
+        "source_version": "test",
+        "generated_at": "2026-07-02T00:00:00+00:00",
+        "evidence": [slo_ref],
+    }
+    out[V / "slo-reading/valid-envelope.notes.json"] = {
+        "description": (
+            "Companion to slo-reading/valid-envelope.json. The x402 consumer "
+            "vector: a presidio-hardened/slo-reading@1 Layer-0 degradation "
+            "reading (key-less, emitted by `pat evidence-emit`; degraded means "
+            "value > threshold) signed into an evidence-ref@1 envelope by the "
+            "bridge sidecar. item_id SLO-DEGRADED and ledger_ref match "
+            "arch-translucency build_slo_evidence; presidio-hardened-x402's "
+            "SLO payment broker verifies this envelope fail-closed (wrong key "
+            "or tamper => reject, do not pay) before purchasing capacity."
+        ),
+        "layer0_reading": slo_reading,
+        "signed_content": slo_content,
+        "expected_content_hash": slo_ch,
+        "degraded": True,
+        "verifies_with_public_key_hex": pub,
+        "trust_store": {ATX_SIGNER: {"alg": "ed25519", "public_key": pub}},
+    }
+
+    # (e) treasury: treasury-close/checkpoint/v1 — LAYER 0 ONLY by design
+    # (ADR-0001 D1: no Ed25519 grafted onto the keyless dual-control model;
+    # "no secrets to steal"). Pins content addressing: the checkpoint id is
+    # the sha256 of the canonical envelope, including null-valued optional
+    # fields and integer-nanosecond timestamps (within i64).
+    ckpt_envelope = {
+        "schema": "treasury-close/checkpoint/v1",
+        "tenant": "acme",
+        "period": "2026Q2",
+        "as_of": 1780000000000000000,
+        "sealed_at": 1780000000000000100,
+        "state_root": "05" * 32,
+        "supersedes": None,
+        "reason": None,
+        "materiality_memo": None,
+    }
+    ckpt_id = hashlib.sha256(cb(ckpt_envelope)).hexdigest()
+    out[V / "treasury-checkpoint/valid-checkpoint.json"] = ckpt_envelope
+    out[V / "treasury-checkpoint/valid-checkpoint.notes.json"] = {
+        "description": (
+            "Companion to treasury-checkpoint/valid-checkpoint.json. The "
+            "treasury consumer vector, Layer 0 ONLY (ADR-0001 D1): "
+            "treasury-close/checkpoint/v1 checkpoint identity = sha256 over "
+            "the canonical envelope (sorted keys, compact separators, floats "
+            "rejected, nulls preserved, i64 nanosecond timestamps). No "
+            "signature by design — treasury's trust model is content "
+            "addressing + dual-control approval (preparer != approver), not "
+            "key material. Shape matches treasury-close checkpoint.rs "
+            "compute_id."
+        ),
+        "expected_checkpoint_id": ckpt_id,
+        "layer": 0,
+        "signature": None,
+    }
+
     return out
 
 

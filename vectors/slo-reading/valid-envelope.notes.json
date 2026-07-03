@@ -1,0 +1,31 @@
+{
+  "description": "Companion to slo-reading/valid-envelope.json. The x402 consumer vector: a presidio-hardened/slo-reading@1 Layer-0 degradation reading (key-less, emitted by `pat evidence-emit`; degraded means value > threshold) signed into an evidence-ref@1 envelope by the bridge sidecar. item_id SLO-DEGRADED and ledger_ref match arch-translucency build_slo_evidence; presidio-hardened-x402's SLO payment broker verifies this envelope fail-closed (wrong key or tamper => reject, do not pay) before purchasing capacity.",
+  "layer0_reading": {
+    "schema": "presidio-hardened/slo-reading@1",
+    "attested_content": {
+      "slo": "p99_latency_ms",
+      "value": 420,
+      "threshold": 200,
+      "window": "5m"
+    },
+    "content_hash": "cc0d5b97d442aa7afd1b9e33aabb952c5389381fea954256855fece2678580c0",
+    "source": "presidio-hardened-arch-translucency",
+    "source_version": "test",
+    "generated_at": "2026-07-02T00:00:00+00:00"
+  },
+  "signed_content": {
+    "slo": "p99_latency_ms",
+    "value": 420,
+    "threshold": 200,
+    "window": "5m"
+  },
+  "expected_content_hash": "cc0d5b97d442aa7afd1b9e33aabb952c5389381fea954256855fece2678580c0",
+  "degraded": true,
+  "verifies_with_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "trust_store": {
+    "presidio-hardened-arch-translucency": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  }
+}
