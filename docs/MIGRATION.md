@@ -29,7 +29,7 @@ Gate: ikigov (step 1) green in CI for one release cycle first — producer chang
 
 What changes:
 - Screening pipeline's canonicalization/signing/audit-record hashing re-exports from the library; `check_payment_policy` / `check_payment_replay` gating logic stays in x402 (product logic, not substrate).
-- **Precondition: deferred** by founder decision. Until then x402 conforms via vectors only (like treasury).
+- **Precondition (RESOLVED 2026-07-04, founder decision): defer.** No x402 code moves into the shared library for now; the library stays private meanwhile. Until then x402 conforms via vectors only (like treasury). The other three consumers (steps 1, 2, 4) proceed now.
 - Session-3 review trigger: if the OEM-kit session changed the screening surface, re-survey before this step.
 
 ## 4. treasury (last, schema-only — Layer 0)

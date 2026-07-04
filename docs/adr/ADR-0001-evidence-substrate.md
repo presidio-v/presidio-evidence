@@ -106,7 +106,7 @@ The decisive observation: **the unification already happened in the wire format;
 1. [x] Scaffold repo: schemas + golden vectors + conformance tests in both languages as first commit (this session).
 2. [x] Migration map per consumer (`docs/MIGRATION.md`, this session).
 3. [x] Visibility question put to the founder (decision recorded in item 4).
-4. [x] Founder signed this ADR (Accepted, 2026-06-12). Still open: record the visibility decision.
+4. [x] Founder signed this ADR (Accepted, 2026-06-12). Visibility decision recorded 2026-07-04. D6 resolved: repo stays private.
 5. [ ] Q4 extraction in migration-map order: ikigov → hardened-ai → x402 → treasury (schema-only).
 6. [x] Rust CI lane promoted from manual trigger to push/PR — validated green locally (fmt + clippy `-D warnings` + 6/6 conformance tests, 2026-06-12) and green on first push run.
 7. [ ] **Protect `main` (block force-push + deletion).** Blocked 2026-06-12: branch protection and rulesets both require a paid plan for **private** repos, and `presidio-v` is on Free. D6 keeps the repo private, so this cannot be applied server-side now. Apply after either (a) org upgrade to Team/Pro, or (b) the repo goes public on founder clearance — whichever comes first. (Session-1 root-of-trust carry.)

@@ -33,7 +33,7 @@ Rejected "while we're at it" items (recorded, not built):
 - [x] Founder signed ADR-0001 (Accepted, 2026-06-12).
 - [x] Founder signed ADR-0002 (provenance-parents convention, Accepted 2026-07-02).
 - [x] Append the parents-bearing golden vector (R1) **and** the workshop-attestation vector (T-B4 R5) — **Delivered 2026-07-02**, both suites green (ADR-0001 D2: Python 81 passed/1 skipped, 100% coverage; Rust 9/9 conformance). Landed together with the Rust lane's first green run (gate above); no founder waiver needed.
-- [ ] Visibility decision recorded.
+- [x] Visibility decision recorded 2026-07-04: keep `presidio-evidence` private and defer x402 code movement (migration step 3) for now; closes ADR-0001 D6 + action item 4.
 - [x] Rust lane first green run (2026-07-02): full lane green on a Rust-equipped runner — `cargo fmt --check` OK, `cargo clippy --all-targets -- -D warnings` clean, `cargo test --locked` 6/6 conformance tests pass (canonical-json, ed25519 golden + tamper-fail-closed, hmac golden, envelope end-to-end, schema constants), no divergence from committed vectors. Toolchain: rustc/cargo 1.95.0 (stable). ci-rust.yml already carries push/PR triggers (committed 2026-06-12, ADR-0001 item 6); no promotion change needed — this run closes the "awaits first green run" gate that R3/this list still showed open.
 - [ ] Session 3 review trigger: if the x402 OEM-kit session changes the screening evidence surface, revisit ADR-0001 D1/D4 before Q4 extraction.
 
