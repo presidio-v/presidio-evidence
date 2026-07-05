@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://presidio-group.eu/schemas/evidence-ref.v2.schema.json",
+  "title": "presidio-hardened/evidence-ref@2",
+  "description": "Cross-repo signed evidence contract, assurance-tier revision (ADR-0003). Frozen with the same discipline as @1 (ADR-0001 D5): no field removals, no type or constraint changes, no new required fields within @2. Differs from @1 in exactly two ways: the envelope 'schema' field is REQUIRED and must be this id (no grandfathering in @2), and each evidenceRef MAY carry an optional 'assurance_tier'. assurance_tier declares the runtime-compliance assurance regime of the referenced evidence (Computational Jurisprudence, Stantchev 2026): 'attested' = trusted-execution / signature-attested (the implicit @1 tier, and the default when the field is absent); 'optimistic' = a bonded assertion presumed valid unless a fraud proof lands in a dispute window; 'zk' = a succinct zero-knowledge proof of the norm predicate. The detached signature is unchanged from @1: alg(canonical_json({\"content_hash\": ..., \"signer\": ...})) where canonical_json sorts keys, uses (\",\", \":\") separators, UTF-8, ensure_ascii=False; assurance_tier is signed only insofar as a producer content-hashes it into the referenced payload.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "presidio-hardened/evidence-ref@2",
+      "description": "Required in @2 (no grandfathering); must match exactly. Verifiers reject any other value (fail-closed)."
+    },
+    "use_case": { "$ref": "#/$defs/boundedString" },
+    "source": { "$ref": "#/$defs/boundedString" },
+    "source_version": { "$ref": "#/$defs/boundedString" },
+    "generated_at": { "$ref": "#/$defs/boundedString" },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidenceRef" }
+    }
+  },
+  "required": ["schema", "evidence"],
+  "$defs": {
+    "boundedString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000]*$"
+    },
+    "lowercaseHex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8,128}$"
+    },
+    "assuranceTier": {
+      "type": "string",
+      "enum": ["attested", "optimistic", "zk"],
+      "description": "Assurance regime of the referenced evidence. Optional; the default when absent is 'attested', matching every @1 record."
+    },
+    "evidenceRef": {
+      "type": "object",
+      "description": "One signed evidence reference. The 8 @1 fields are required, non-empty strings <=512 chars, no null bytes; item_id domain validation is consumer-side. 'assurance_tier' is the single additive optional field in @2; when absent it means 'attested'.",
+      "properties": {
+        "item_id": { "$ref": "#/$defs/boundedString" },
+        "source": { "$ref": "#/$defs/boundedString" },
+        "source_version": { "$ref": "#/$defs/boundedString" },
+        "ledger_ref": { "$ref": "#/$defs/boundedString" },
+        "content_hash": {
+          "allOf": [{ "$ref": "#/$defs/boundedString" }, { "$ref": "#/$defs/lowercaseHex" }]
+        },
+        "signer": { "$ref": "#/$defs/boundedString" },
+        "signature": {
+          "allOf": [{ "$ref": "#/$defs/boundedString" }, { "$ref": "#/$defs/lowercaseHex" }]
+        },
+        "claimed_at": { "$ref": "#/$defs/boundedString" },
+        "assurance_tier": { "$ref": "#/$defs/assuranceTier" }
+      },
+      "required": [
+        "item_id",
+        "source",
+        "source_version",
+        "ledger_ref",
+        "content_hash",
+        "signer",
+        "signature",
+        "claimed_at"
+      ]
+    }
+  }
+}

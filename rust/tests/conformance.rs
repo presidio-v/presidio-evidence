@@ -330,7 +330,10 @@ fn workshop_leavebehind_owner_signature_verifies() {
     let manifest_canonical = canonical_string(&manifest).unwrap();
     let expected_ch = notes["expected_content_hash"].as_str().unwrap();
     assert_eq!(sha256_hex(manifest_canonical.as_bytes()), expected_ch);
-    assert_eq!(notes["attestation_would_attest"].as_str().unwrap(), expected_ch);
+    assert_eq!(
+        notes["attestation_would_attest"].as_str().unwrap(),
+        expected_ch
+    );
 
     // Owner pubkey is attested INSIDE the signed content and must match the
     // verifying key (ikigov's owner-consistency check).
@@ -365,6 +368,155 @@ fn workshop_leavebehind_owner_signature_verifies() {
     bad["risk_class"] = serde_json::json!("low");
     let bad_canonical = canonical_string(&bad).unwrap();
     assert!(vk.verify(bad_canonical.as_bytes(), &sig).is_err());
+}
+
+// ── evidence-ref@2 assurance tiers (ADR-0003) ────────────────────────────────
+
+#[test]
+fn v2_schema_constants_match_python_side() {
+    assert_eq!(
+        presidio_evidence::EVIDENCE_REF_SCHEMA_ID_V2,
+        "presidio-hardened/evidence-ref@2"
+    );
+    assert_eq!(
+        presidio_evidence::EVIDENCE_REF_SCHEMA_IDS,
+        [
+            "presidio-hardened/evidence-ref@1",
+            "presidio-hardened/evidence-ref@2"
+        ]
+    );
+    assert_eq!(
+        presidio_evidence::ASSURANCE_TIERS,
+        ["attested", "optimistic", "zk"]
+    );
+    assert_eq!(presidio_evidence::DEFAULT_ASSURANCE_TIER, "attested");
+}
+
+/// Resolve a ref's tier the way an @2-aware consumer does: declared values are
+/// honored only under evidence-ref@2. Under @1, assurance_tier is an inert extra
+/// field and policy reads the "attested" default (ADR-0003 Option 1).
+fn resolved_tier(schema: &str, evidence_ref: &Value) -> String {
+    if schema != presidio_evidence::EVIDENCE_REF_SCHEMA_ID_V2 {
+        return presidio_evidence::DEFAULT_ASSURANCE_TIER.to_string();
+    }
+    evidence_ref["assurance_tier"]
+        .as_str()
+        .unwrap_or(presidio_evidence::DEFAULT_ASSURANCE_TIER)
+        .to_string()
+}
+
+#[test]
+fn v2_explicit_tiers_verify_and_signature_is_tier_independent() {
+    // One valid @2 envelope, one ref per explicit tier. Declaring a tier does
+    // NOT change what is signed — every ref reuses the @1 golden
+    // content_hash/signature and verifies against the same key.
+    let envelope = load("vectors/evidence-ref-v2/valid-tiers.json");
+    let notes = load("vectors/evidence-ref-v2/valid-tiers.notes.json");
+    let schema = envelope["schema"].as_str().unwrap();
+    assert_eq!(schema, presidio_evidence::EVIDENCE_REF_SCHEMA_ID_V2);
+
+    let content = canonical_string(&notes["signed_content"]).unwrap();
+    let expected_ch = notes["expected_content_hash"].as_str().unwrap();
+    assert_eq!(sha256_hex(content.as_bytes()), expected_ch);
+
+    let pub_hex = notes["verifies_with_public_key_hex"].as_str().unwrap();
+    let seen: Vec<String> = envelope["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| {
+            assert_eq!(r["content_hash"].as_str().unwrap(), expected_ch);
+            let signer = r["signer"].as_str().unwrap();
+            let sig = r["signature"].as_str().unwrap();
+            assert!(
+                verify_ed25519(expected_ch, signer, sig, pub_hex),
+                "tier {} must verify",
+                resolved_tier(schema, r)
+            );
+            resolved_tier(schema, r)
+        })
+        .collect();
+    assert_eq!(seen, ["attested", "optimistic", "zk"]);
+    assert_eq!(
+        notes["tier_default_when_absent"].as_str().unwrap(),
+        presidio_evidence::DEFAULT_ASSURANCE_TIER
+    );
+}
+
+#[test]
+fn v2_absent_tier_resolves_to_attested_and_verifies() {
+    let envelope = load("vectors/evidence-ref-v2/valid-tier-absent.json");
+    let notes = load("vectors/evidence-ref-v2/valid-tier-absent.notes.json");
+    let evidence_ref = &envelope["evidence"][0];
+    assert!(
+        evidence_ref["assurance_tier"].is_null(),
+        "absent on the wire"
+    );
+    assert_eq!(
+        resolved_tier(envelope["schema"].as_str().unwrap(), evidence_ref),
+        "attested"
+    );
+    assert_eq!(
+        notes["resolved_assurance_tier"].as_str().unwrap(),
+        presidio_evidence::DEFAULT_ASSURANCE_TIER
+    );
+
+    let expected_ch = notes["expected_content_hash"].as_str().unwrap();
+    let signer = evidence_ref["signer"].as_str().unwrap();
+    let sig = evidence_ref["signature"].as_str().unwrap();
+    let pub_hex = notes["verifies_with_public_key_hex"].as_str().unwrap();
+    assert!(verify_ed25519(expected_ch, signer, sig, pub_hex));
+}
+
+#[test]
+fn v2_invalid_vectors_are_rejectable() {
+    // Unknown tier: not in the enum.
+    let unknown = load("vectors/evidence-ref-v2/invalid-unknown-tier.json");
+    let tier = unknown["document"]["evidence"][0]["assurance_tier"]
+        .as_str()
+        .unwrap();
+    assert!(!presidio_evidence::ASSURANCE_TIERS.contains(&tier));
+
+    // Missing schema: @2 requires it (no grandfathering).
+    let missing = load("vectors/evidence-ref-v2/invalid-missing-schema.json");
+    assert!(missing["document"]["schema"].is_null());
+
+    // Wrong schema id: the @2 validator rejects anything but @2.
+    let wrong = load("vectors/evidence-ref-v2/invalid-wrong-schema-id.json");
+    assert_eq!(
+        wrong["document"]["schema"].as_str().unwrap(),
+        presidio_evidence::EVIDENCE_REF_SCHEMA_ID
+    );
+    assert_ne!(
+        wrong["document"]["schema"].as_str().unwrap(),
+        presidio_evidence::EVIDENCE_REF_SCHEMA_ID_V2
+    );
+}
+
+#[test]
+fn v1_record_with_assurance_tier_still_verifies() {
+    // Extra-field finding (ADR-0003): an @1 envelope carrying assurance_tier is
+    // tolerated (no additionalProperties:false in @1). The signed message is
+    // unchanged, so the ref still verifies; the tier is inert unless the
+    // envelope declares @2, and is ignored (read as "attested") by @1 consumers.
+    let envelope = load("vectors/evidence-ref-v2/valid-v1-with-extra-tier.json");
+    let schema = envelope["schema"].as_str().unwrap();
+    assert_eq!(schema, presidio_evidence::EVIDENCE_REF_SCHEMA_ID);
+    let evidence_ref = &envelope["evidence"][0];
+    assert_eq!(
+        evidence_ref["assurance_tier"].as_str().unwrap(),
+        "optimistic"
+    );
+    assert_eq!(resolved_tier(schema, evidence_ref), "attested");
+
+    // Reuses the @1 fraud-scoring golden content/signature; verifies unchanged.
+    let notes = load("vectors/evidence-ref/valid-envelope.notes.json");
+    let expected_ch = notes["expected_content_hash"].as_str().unwrap();
+    let pub_hex = notes["verifies_with_public_key_hex"].as_str().unwrap();
+    let signer = evidence_ref["signer"].as_str().unwrap();
+    let sig = evidence_ref["signature"].as_str().unwrap();
+    assert_eq!(evidence_ref["content_hash"].as_str().unwrap(), expected_ch);
+    assert!(verify_ed25519(expected_ch, signer, sig, pub_hex));
 }
 
 #[test]

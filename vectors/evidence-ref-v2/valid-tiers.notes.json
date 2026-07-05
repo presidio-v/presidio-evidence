@@ -1,0 +1,19 @@
+{
+  "description": "Companion to valid-tiers.json (ADR-0003). One valid presidio-hardened/evidence-ref@2 envelope carrying one ref per explicit assurance_tier value (attested, optimistic, zk). Every ref reuses the @1 golden content_hash/signature verbatim: the signature covers canonical({content_hash, signer}) exactly as in @1, so declaring a tier does not change what is signed. optimistic and zk name an assurance TARGET; fraud-proof and ZK-proof verification are out of scope of this repo (ADR-0003).",
+  "signed_content": {
+    "records": [
+      "r1",
+      "r2"
+    ],
+    "use_case": "fraud-scoring"
+  },
+  "expected_content_hash": "3907dd429ab81335ac6fc24321d34cb367cc5a0c64fffa7ae69c55ff642b88fe",
+  "verifies_with_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "trust_store": {
+    "presidio-hardened-ai": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  },
+  "tier_default_when_absent": "attested"
+}

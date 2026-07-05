@@ -14,7 +14,15 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from ._constants import EVIDENCE_REF_FIELDS, EVIDENCE_REF_SCHEMA_ID, SIGNING_ALGORITHMS
+from ._constants import (
+    ASSURANCE_TIERS,
+    DEFAULT_ASSURANCE_TIER,
+    EVIDENCE_REF_FIELDS,
+    EVIDENCE_REF_SCHEMA_ID,
+    EVIDENCE_REF_SCHEMA_ID_V2,
+    EVIDENCE_REF_SCHEMA_IDS,
+    SIGNING_ALGORITHMS,
+)
 from ._errors import EvidenceError
 from ._signing import _require_crypto, verify_ed25519, verify_hmac
 
@@ -24,7 +32,14 @@ _MAX_STR = 512
 
 @dataclass(frozen=True)
 class EvidenceRef:
-    """One signed evidence reference (the 8 frozen contract fields, in order)."""
+    """One signed evidence reference (the 8 frozen contract fields, in order).
+
+    ``assurance_tier`` is the additive optional field of ``evidence-ref@2``
+    (ADR-0003); ``None`` on the wire (absent, or an @1 ref) resolves to the
+    default ``"attested"`` via :attr:`tier`. It is metadata about the referenced
+    evidence and is NOT part of the signed message (still
+    ``canonical({content_hash, signer})``), so it never affects verification.
+    """
 
     item_id: str
     source: str
@@ -34,21 +49,44 @@ class EvidenceRef:
     signer: str
     signature: str
     claimed_at: str
+    assurance_tier: str | None = None
+
+    @property
+    def tier(self) -> str:
+        """Resolved assurance tier: the declared value, or ``"attested"`` if absent."""
+        return self.assurance_tier if self.assurance_tier is not None else DEFAULT_ASSURANCE_TIER
 
     def to_dict(self) -> dict[str, str]:
-        return {name: getattr(self, name) for name in EVIDENCE_REF_FIELDS}
+        """The 8 frozen contract fields, plus ``assurance_tier`` iff declared.
+
+        Omitting an undeclared tier keeps @1 envelopes byte-identical and the
+        content-hash/signing surface unchanged.
+        """
+        out = {name: getattr(self, name) for name in EVIDENCE_REF_FIELDS}
+        if self.assurance_tier is not None:
+            out["assurance_tier"] = self.assurance_tier
+        return out
 
 
-def _str_field(raw: Mapping[str, object], name: str) -> str:
-    value = raw.get(name)
+def _bounded_str(value: object, label: str) -> str:
     if not isinstance(value, str) or not value or len(value) > _MAX_STR:
-        raise EvidenceError(f"evidence ref field '{name}' must be a non-empty string <={_MAX_STR}")
+        raise EvidenceError(f"{label} must be a non-empty string <={_MAX_STR}")
     if "\x00" in value:
-        raise EvidenceError(f"evidence ref field '{name}' contains a null byte")
+        raise EvidenceError(f"{label} contains a null byte")
     return value
 
 
-def _parse_ref(raw: object) -> EvidenceRef:
+def _str_field(raw: Mapping[str, object], name: str) -> str:
+    return _bounded_str(raw.get(name), f"evidence ref field '{name}'")
+
+
+def _optional_envelope_field(raw: Mapping[str, object], name: str) -> str | None:
+    if name not in raw:
+        return None
+    return _bounded_str(raw.get(name), f"evidence envelope field '{name}'")
+
+
+def _parse_ref(raw: object, *, schema: str | None) -> EvidenceRef:
     if not isinstance(raw, Mapping):
         raise EvidenceError("each evidence entry must be an object")
     missing = [f for f in EVIDENCE_REF_FIELDS if f not in raw]
@@ -58,26 +96,43 @@ def _parse_ref(raw: object) -> EvidenceRef:
     for hex_field in ("content_hash", "signature"):
         if not _HEX_RE.match(fields[hex_field]):
             raise EvidenceError(f"evidence ref {hex_field} must be lowercase hex (8-128 chars)")
-    return EvidenceRef(**fields)
+    tier = None
+    if schema == EVIDENCE_REF_SCHEMA_ID_V2:
+        tier = raw.get("assurance_tier")
+        if tier is not None and tier not in ASSURANCE_TIERS:
+            raise EvidenceError(
+                "evidence ref assurance_tier must be one of "
+                f"{ASSURANCE_TIERS} or absent, got {tier!r}"
+            )
+    return EvidenceRef(**fields, assurance_tier=tier)
 
 
 def parse_document(doc: object) -> list[EvidenceRef]:
     """Validate an evidence envelope and return its refs (fail-closed).
 
     Enforces the wire contract (the 8 fields, bounded strings, lowercase-hex
-    hash/signature, optional schema id) but not ``item_id`` domain membership.
+    hash/signature, and — @2 only — the optional per-ref ``assurance_tier``) but
+    not ``item_id`` domain membership. The verifier accepts ``evidence-ref@1``
+    (schema optional, grandfathered) and ``evidence-ref@2`` (schema required,
+    ADR-0003); any other schema is rejected fail-closed (ADR-0001 D4/D5). A
+    schema-absent envelope is parsed under the @1 grandfathering rule. An @1 ref
+    carrying ``assurance_tier`` is tolerated as an ignored extra field (not an
+    @1 freeze violation) and resolves to the "attested" default like any other
+    @1 ref; declared tiers are honored only under ``evidence-ref@2``.
     """
     if not isinstance(doc, Mapping) or "evidence" not in doc:
         raise EvidenceError("evidence document must be an object with an 'evidence' array")
     schema = doc.get("schema")
-    if schema is not None and schema != EVIDENCE_REF_SCHEMA_ID:
+    if schema is not None and schema not in EVIDENCE_REF_SCHEMA_IDS:
         raise EvidenceError(
-            f"unsupported evidence schema: {schema!r} (expected {EVIDENCE_REF_SCHEMA_ID!r})"
+            f"unsupported evidence schema: {schema!r} (expected one of {EVIDENCE_REF_SCHEMA_IDS})"
         )
+    for name in ("use_case", "source", "source_version", "generated_at"):
+        _optional_envelope_field(doc, name)
     entries = doc.get("evidence")
     if not isinstance(entries, list):
         raise EvidenceError("'evidence' must be an array")
-    return [_parse_ref(entry) for entry in entries]
+    return [_parse_ref(entry, schema=schema) for entry in entries]
 
 
 def load_evidence(text: str) -> list[EvidenceRef]:
@@ -96,9 +151,20 @@ def build_envelope(
     source_version: str | None = None,
     use_case: str | None = None,
     generated_at: str | None = None,
+    schema: str = EVIDENCE_REF_SCHEMA_ID,
 ) -> dict:
-    """Assemble an evidence envelope from refs plus optional metadata."""
-    envelope: dict[str, object] = {"schema": EVIDENCE_REF_SCHEMA_ID}
+    """Assemble an evidence envelope from refs plus optional metadata.
+
+    ``schema`` defaults to ``evidence-ref@1`` (unchanged); pass
+    :data:`EVIDENCE_REF_SCHEMA_ID_V2` to emit an ``evidence-ref@2`` envelope
+    whose refs may carry ``assurance_tier`` (ADR-0003). The envelope shape and
+    the signed message are otherwise identical.
+    """
+    if schema not in EVIDENCE_REF_SCHEMA_IDS:
+        raise EvidenceError(
+            f"unsupported evidence schema: {schema!r} (expected one of {EVIDENCE_REF_SCHEMA_IDS})"
+        )
+    envelope: dict[str, object] = {"schema": schema}
     if use_case is not None:
         envelope["use_case"] = use_case
     if source is not None:

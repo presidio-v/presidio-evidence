@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "presidio-evidence"
-version = "0.2.1"
+version = "0.2.2"
 description = "Shared evidence substrate for the presidio-hardened-* suite: pre-execution gating + signed evidence + fail-closed verification. Schema and golden test vectors are the contract; implementations conform to them. Independent of Microsoft Presidio."
 readme = "README.md"
 requires-python = ">=3.10"

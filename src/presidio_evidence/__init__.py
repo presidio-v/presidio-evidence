@@ -23,8 +23,12 @@ from __future__ import annotations
 
 from ._canonical import canonical_bytes, content_hash, sha256_hex
 from ._constants import (
+    ASSURANCE_TIERS,
+    DEFAULT_ASSURANCE_TIER,
     EVIDENCE_REF_FIELDS,
     EVIDENCE_REF_SCHEMA_ID,
+    EVIDENCE_REF_SCHEMA_ID_V2,
+    EVIDENCE_REF_SCHEMA_IDS,
     SIGNING_ALGORITHMS,
     TRUST_STORE_SCHEMA_ID,
 )
@@ -46,12 +50,16 @@ from ._signing import (
     verify_hmac,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.2.2"
 
 __all__ = [
-    # contract constants (frozen; ADR-0001)
+    # contract constants (frozen; ADR-0001) + assurance tiers (ADR-0003)
     "EVIDENCE_REF_FIELDS",
     "EVIDENCE_REF_SCHEMA_ID",
+    "EVIDENCE_REF_SCHEMA_ID_V2",
+    "EVIDENCE_REF_SCHEMA_IDS",
+    "ASSURANCE_TIERS",
+    "DEFAULT_ASSURANCE_TIER",
     "SIGNING_ALGORITHMS",
     "TRUST_STORE_SCHEMA_ID",
     "__version__",

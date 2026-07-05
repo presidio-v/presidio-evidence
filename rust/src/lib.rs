@@ -11,6 +11,22 @@
 /// Cross-repo signed-evidence schema id (frozen; ADR-0001 D1/D5).
 pub const EVIDENCE_REF_SCHEMA_ID: &str = "presidio-hardened/evidence-ref@1";
 
+/// Assurance-tier revision (ADR-0003, Accepted): optional per-ref
+/// `assurance_tier`, required envelope `schema`; the signed message is
+/// unchanged from @1.
+pub const EVIDENCE_REF_SCHEMA_ID_V2: &str = "presidio-hardened/evidence-ref@2";
+
+/// Schema ids the verifier accepts (fail-closed on any other; ADR-0001 D4/D5).
+pub const EVIDENCE_REF_SCHEMA_IDS: [&str; 2] = [EVIDENCE_REF_SCHEMA_ID, EVIDENCE_REF_SCHEMA_ID_V2];
+
+/// Assurance tiers (ADR-0003), default first: signature-attested / trusted
+/// execution, bonded optimistic assertion, succinct zero-knowledge proof.
+pub const ASSURANCE_TIERS: [&str; 3] = ["attested", "optimistic", "zk"];
+
+/// Tier assumed when a ref omits `assurance_tier` (every @1 ref is implicitly
+/// this tier); ADR-0003.
+pub const DEFAULT_ASSURANCE_TIER: &str = "attested";
+
 /// Verifier-side trust-store schema id (ADR-0001 D3).
 pub const TRUST_STORE_SCHEMA_ID: &str = "presidio-hardened/trust-store@1";
 

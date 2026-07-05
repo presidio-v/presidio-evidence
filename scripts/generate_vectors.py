@@ -594,6 +594,143 @@ def build() -> dict[pathlib.Path, dict]:
         "signature": None,
     }
 
+    # ------------------------------------------------------------------
+    # evidence-ref@2 — assurance tiers (ADR-0003, Accepted). Additive to @1:
+    # the envelope `schema` field is now REQUIRED (no grandfathering in @2) and
+    # each evidenceRef MAY carry an optional `assurance_tier` in
+    # ("attested", "optimistic", "zk"); absent means "attested" (the implicit
+    # @1 tier). What gets SIGNED is unchanged — the detached signature still
+    # covers canonical({content_hash, signer}); the tier is not part of that
+    # message. The @2 refs below reuse the @1 golden content/signature (CH,
+    # real_sig over the fraud-scoring content) verbatim to make that explicit.
+    # Append-only: these are new files; no @1 vector is touched.
+    # ------------------------------------------------------------------
+    v2_base_ref = {
+        "item_id": "D1",
+        "source": "presidio-hardened-ai",
+        "source_version": "0.30.0",
+        "ledger_ref": "pai-ledger:seq/1",
+        "content_hash": real_ch,
+        "signer": SIGNER,
+        "signature": real_sig,
+        "claimed_at": "2026-06-12T00:00:00+00:00",
+    }
+
+    def v2_envelope(refs: list[dict]) -> dict:
+        return {
+            "schema": "presidio-hardened/evidence-ref@2",
+            "use_case": "fraud-scoring",
+            "source": "presidio-hardened-ai",
+            "source_version": "0.30.0",
+            "generated_at": "2026-06-12T00:00:00+00:00",
+            "evidence": refs,
+        }
+
+    # One valid @2 envelope carrying one ref per explicit tier value.
+    out[V / "evidence-ref-v2/valid-tiers.json"] = v2_envelope(
+        [
+            dict(v2_base_ref, item_id="D1-attested", assurance_tier="attested"),
+            dict(v2_base_ref, item_id="D2-optimistic", assurance_tier="optimistic"),
+            dict(v2_base_ref, item_id="D3-zk", assurance_tier="zk"),
+        ]
+    )
+    out[V / "evidence-ref-v2/valid-tiers.notes.json"] = {
+        "description": (
+            "Companion to valid-tiers.json (ADR-0003). One valid "
+            "presidio-hardened/evidence-ref@2 envelope carrying one ref per "
+            "explicit assurance_tier value (attested, optimistic, zk). Every "
+            "ref reuses the @1 golden content_hash/signature verbatim: the "
+            "signature covers canonical({content_hash, signer}) exactly as in "
+            "@1, so declaring a tier does not change what is signed. "
+            "optimistic and zk name an assurance TARGET; fraud-proof and "
+            "ZK-proof verification are out of scope of this repo (ADR-0003)."
+        ),
+        "signed_content": content,
+        "expected_content_hash": real_ch,
+        "verifies_with_public_key_hex": pub,
+        "trust_store": {SIGNER: {"alg": "ed25519", "public_key": pub}},
+        "tier_default_when_absent": "attested",
+    }
+
+    # A valid @2 envelope whose single ref OMITS assurance_tier — documents the
+    # default ("attested"), and pins that the field is genuinely optional in @2.
+    out[V / "evidence-ref-v2/valid-tier-absent.json"] = v2_envelope([dict(v2_base_ref)])
+    out[V / "evidence-ref-v2/valid-tier-absent.notes.json"] = {
+        "description": (
+            "Companion to valid-tier-absent.json (ADR-0003). A valid "
+            "evidence-ref@2 envelope whose evidence[0] omits assurance_tier. "
+            "assurance_tier is OPTIONAL in @2; when absent the tier is "
+            "'attested' — identical assurance to every @1 record. Consumers "
+            "read the tier through the library default, not the wire bytes."
+        ),
+        "signed_content": content,
+        "expected_content_hash": real_ch,
+        "resolved_assurance_tier": "attested",
+        "verifies_with_public_key_hex": pub,
+        "trust_store": {SIGNER: {"alg": "ed25519", "public_key": pub}},
+    }
+
+    v2_invalid = [
+        (
+            "invalid-unknown-tier",
+            v2_envelope([dict(v2_base_ref, assurance_tier="quantum")]),
+            "assurance_tier must be one of attested/optimistic/zk (unknown value rejected)",
+        ),
+        (
+            "invalid-missing-schema",
+            {
+                "use_case": "fraud-scoring",
+                "source": "presidio-hardened-ai",
+                "source_version": "0.30.0",
+                "generated_at": "2026-06-12T00:00:00+00:00",
+                "evidence": [dict(v2_base_ref)],
+            },
+            "schema field is REQUIRED in @2 (no grandfathering) — envelope without it rejected",
+        ),
+        (
+            "invalid-wrong-schema-id",
+            dict(v2_envelope([dict(v2_base_ref)]), schema="presidio-hardened/evidence-ref@1"),
+            "@2 validator rejects any schema id other than evidence-ref@2 (fail-closed)",
+        ),
+    ]
+    for name, doc, why in v2_invalid:
+        out[V / f"evidence-ref-v2/{name}.json"] = {"_reason": why, "document": doc}
+
+    # An @1 record carrying assurance_tier. ADR-0001 D5 freezes @1 but the @1
+    # schema sets no additionalProperties:false and the @1 verifier ignores
+    # unknown keys, so an extra field is TOLERATED under @1 (it is neither a
+    # field removal, a type/constraint change, nor a new required field). This
+    # vector is validated against evidence-ref.v1.schema.json and PASSES; it
+    # documents that the tier is silently ignored by @1 consumers (they read
+    # the implicit "attested"). Filed under evidence-ref-v2/ as a v1-vs-v2
+    # boundary case; the finding is recorded in ADR-0003.
+    out[V / "evidence-ref-v2/valid-v1-with-extra-tier.json"] = {
+        "schema": "presidio-hardened/evidence-ref@1",
+        "use_case": "fraud-scoring",
+        "source": "presidio-hardened-ai",
+        "source_version": "0.30.0",
+        "generated_at": "2026-06-12T00:00:00+00:00",
+        "evidence": [dict(v2_base_ref, assurance_tier="optimistic")],
+    }
+    out[V / "evidence-ref-v2/valid-v1-with-extra-tier.notes.json"] = {
+        "description": (
+            "Boundary case (ADR-0003 extra-field finding). An "
+            "evidence-ref@1 envelope whose ref carries assurance_tier. The @1 "
+            "schema declares no additionalProperties:false and the @1 verifier "
+            "ignores unknown keys, so this document is VALID under "
+            "evidence-ref.v1.schema.json — an extra field is not a field "
+            "removal, type/constraint change, or new required field, so it "
+            "does not violate the @1 freeze (ADR-0001 D5). @1 consumers ignore "
+            "the tier and read the implicit 'attested'. Producers that want the "
+            "tier honoured emit @2. Validated against the @1 schema, expected "
+            "to PASS."
+        ),
+        "validated_against": "evidence-ref.v1.schema.json",
+        "expected": "valid (extra field tolerated under @1)",
+        "tier_visible_to_v1_consumer": False,
+        "resolved_assurance_tier_for_v1_consumer": "attested",
+    }
+
     return out
 
 

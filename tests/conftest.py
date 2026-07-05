@@ -31,5 +31,10 @@ def evidence_ref_schema() -> dict:
 
 
 @pytest.fixture(scope="session")
+def evidence_ref_schema_v2() -> dict:
+    return load_json(SCHEMAS / "evidence-ref.v2.schema.json")
+
+
+@pytest.fixture(scope="session")
 def trust_store_schema() -> dict:
     return load_json(SCHEMAS / "trust-store.v1.schema.json")

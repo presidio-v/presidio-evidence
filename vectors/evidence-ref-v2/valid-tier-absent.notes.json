@@ -1,0 +1,19 @@
+{
+  "description": "Companion to valid-tier-absent.json (ADR-0003). A valid evidence-ref@2 envelope whose evidence[0] omits assurance_tier. assurance_tier is OPTIONAL in @2; when absent the tier is 'attested' — identical assurance to every @1 record. Consumers read the tier through the library default, not the wire bytes.",
+  "signed_content": {
+    "records": [
+      "r1",
+      "r2"
+    ],
+    "use_case": "fraud-scoring"
+  },
+  "expected_content_hash": "3907dd429ab81335ac6fc24321d34cb367cc5a0c64fffa7ae69c55ff642b88fe",
+  "resolved_assurance_tier": "attested",
+  "verifies_with_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "trust_store": {
+    "presidio-hardened-ai": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  }
+}

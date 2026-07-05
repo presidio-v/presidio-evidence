@@ -1,0 +1,7 @@
+{
+  "description": "Boundary case (ADR-0003 extra-field finding). An evidence-ref@1 envelope whose ref carries assurance_tier. The @1 schema declares no additionalProperties:false and the @1 verifier ignores unknown keys, so this document is VALID under evidence-ref.v1.schema.json — an extra field is not a field removal, type/constraint change, or new required field, so it does not violate the @1 freeze (ADR-0001 D5). @1 consumers ignore the tier and read the implicit 'attested'. Producers that want the tier honoured emit @2. Validated against the @1 schema, expected to PASS.",
+  "validated_against": "evidence-ref.v1.schema.json",
+  "expected": "valid (extra field tolerated under @1)",
+  "tier_visible_to_v1_consumer": false,
+  "resolved_assurance_tier_for_v1_consumer": "attested"
+}
