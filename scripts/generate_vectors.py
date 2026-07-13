@@ -670,6 +670,152 @@ def build() -> dict[pathlib.Path, dict]:
         "trust_store": {SIGNER: {"alg": "ed25519", "public_key": pub}},
     }
 
+    # ------------------------------------------------------------------
+    # (f) arch-translucency: presidio-hardened/energy-reading@1 — RESERVATION
+    # for the pat Energy Arc v0.24.0 "Sign the watt" (pat PRESIDIO-REQ L-EN-4).
+    # Key-less Layer-0 reading under the frozen evidence-ref@1 envelope (the
+    # v0.17 pattern: producer emits unsigned, sidecar signs). Purely additive —
+    # no envelope change, no existing vector touched.
+    #
+    # `energy_chain_head` is the head of pat's chained energy_observations store
+    # (pat ADR-0011 §2, a parallel chain with the ADR-0010 discipline). It is
+    # the discharge of the ADR-0010 external-anchoring deferral: each signed
+    # reading attests the unrewritten history behind it. The family treats it as
+    # an OPAQUE lowercase-hex sha256 — this repo pins the hex discipline, not
+    # pat's chain semantics. The golden value below is a deterministic
+    # placeholder built with the ADR-0010 record-hash shape
+    # (sha256(canonical({content, prev_hash, seq})), genesis prev_hash "0"*64).
+    #
+    # Float discipline: joules/watts never cross the wire as floats (ADR-0001
+    # D1 rejects them). energy_wh / mean_power_w are shortest-round-trip decimal
+    # STRINGS. Payload is ASCII-only, float-free and integer-free.
+    ENERGY_GENESIS = "0" * 64
+    energy_chain_head = hashlib.sha256(
+        cb({"content": {"golden": "energy-observation"}, "prev_hash": ENERGY_GENESIS, "seq": 1})
+    ).hexdigest()
+
+    def energy_vectors(
+        stem: str,
+        item_id: str,
+        use_case: str,
+        content: dict,
+        description: str,
+        extra_notes: dict | None = None,
+    ) -> None:
+        ch = hashlib.sha256(cb(content)).hexdigest()
+        sig = sk.sign(cb({"content_hash": ch, "signer": ATX_SIGNER})).hex()
+        reading = {
+            "schema": "presidio-hardened/energy-reading@1",
+            "attested_content": content,
+            "content_hash": ch,
+            "source": ATX_SIGNER,
+            "source_version": "test",
+            "generated_at": "2026-07-02T00:00:00+00:00",
+        }
+        ref = {
+            "item_id": item_id,
+            "source": ATX_SIGNER,
+            "source_version": "test",
+            "ledger_ref": "atx-energy-ledger:seq/1",
+            "content_hash": ch,
+            "signer": ATX_SIGNER,
+            "signature": sig,
+            "claimed_at": "2026-07-02T00:00:00+00:00",
+        }
+        out[V / f"energy-reading/{stem}.json"] = {
+            "schema": "presidio-hardened/evidence-ref@1",
+            "use_case": use_case,
+            "source": ATX_SIGNER,
+            "source_version": "test",
+            "generated_at": "2026-07-02T00:00:00+00:00",
+            "evidence": [ref],
+        }
+        notes = {
+            "description": description,
+            "layer0_reading": reading,
+            "signed_content": content,
+            "expected_content_hash": ch,
+            "energy_chain_head": content["energy_chain_head"],
+            "energy_chain_head_is_opaque_to_family": True,
+            "verifies_with_public_key_hex": pub,
+            "trust_store": {ATX_SIGNER: {"alg": "ed25519", "public_key": pub}},
+        }
+        notes.update(extra_notes or {})
+        out[V / f"energy-reading/{stem}.notes.json"] = notes
+
+    # (f.1) Nominal: a 5-minute Kepler-sourced serving-layer reading, no parents.
+    # 12.5 Wh over 300 s == 150.0 W mean — the two figures agree by construction,
+    # and the conformance suites re-derive one from the other.
+    energy_vectors(
+        stem="valid-envelope",
+        item_id="energy-reading/golden-window",
+        use_case="energy-reading",
+        content={
+            "reading": "energy-reading@1",
+            "window_start": "2026-07-02T00:00:00+00:00",
+            "window_end": "2026-07-02T00:05:00+00:00",
+            "energy_wh": "12.5",
+            "mean_power_w": "150.0",
+            "source": "kepler",
+            "layer": "pod",
+            "energy_chain_head": energy_chain_head,
+        },
+        description=(
+            "Nominal presidio-hardened/energy-reading@1 Layer-0 reading (pat "
+            "Energy Arc v0.24 'Sign the watt', L-EN-4) — RESERVED, not yet "
+            "emitted by a shipped producer. A 5-minute serving-layer window "
+            "measured by Kepler, key-lessly emitted by pat and signed into the "
+            "frozen evidence-ref@1 envelope by the bridge sidecar (v0.17 "
+            "pattern). `parents` is absent — ADR-0002 P3 omits it when empty. "
+            "energy_wh and mean_power_w are shortest-round-trip decimal STRINGS, "
+            "never floats (ADR-0001 D1): 12.5 Wh over 300 s == 150.0 W, and the "
+            "conformance suites re-derive the mean power from the energy and the "
+            "window. `energy_chain_head` is the head of pat's chained "
+            "energy_observations store (pat ADR-0011 §2) — opaque here; this "
+            "repo pins only the lowercase-hex discipline."
+        ),
+        extra_notes={"parents_present": False, "window_seconds": 300},
+    )
+
+    # (f.2) Parents-bearing: the ADR-0002 DAG edge. This reading covers exactly
+    # the golden training run's window (duration_s 7200 == 2 h) and names its
+    # payload as parent — "these are the joules that run cost". 4800 Wh over 2 h
+    # == 2400.0 W == 4 devices (training-run device_count) at 600 W each.
+    energy_vectors(
+        stem="valid-envelope-parents",
+        item_id="energy-reading/golden-training-window",
+        use_case="energy-reading",
+        content={
+            "reading": "energy-reading@1",
+            "window_start": "2026-07-02T00:00:00+00:00",
+            "window_end": "2026-07-02T02:00:00+00:00",
+            "energy_wh": "4800.0",
+            "mean_power_w": "2400.0",
+            "source": "dcgm",
+            "layer": "pipeline",
+            "energy_chain_head": energy_chain_head,
+            "parents": [tr_ch],
+        },
+        description=(
+            "Parents-bearing presidio-hardened/energy-reading@1 (pat Energy Arc "
+            "v0.24, L-EN-4) — RESERVED. The ADR-0002 DAG edge for the energy "
+            "axis: `parents[0]` is the content hash of the training-run/ golden "
+            "payload, so this reading says 'these are the joules that run cost'. "
+            "The window matches that run exactly (duration_s 7200 == 2 h) and "
+            "`layer` matches its `strategy` ('pipeline'); 4800 Wh over 2 h == "
+            "2400.0 W == the run's 4 devices at 600 W each. Lineage lives inside "
+            "the hashed content (ADR-0002 P1), so rewiring it breaks both the "
+            "content hash and the signature. DCGM-sourced (the accelerator meter, "
+            "per the v0.23 'Train the watt' theme)."
+        ),
+        extra_notes={
+            "parents_present": True,
+            "window_seconds": 7200,
+            "parent_content_hash": tr_ch,
+            "parent_vector": "vectors/training-run/valid-envelope.json",
+        },
+    )
+
     v2_invalid = [
         (
             "invalid-unknown-tier",

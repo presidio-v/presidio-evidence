@@ -1,0 +1,50 @@
+{
+  "description": "Parents-bearing presidio-hardened/energy-reading@1 (pat Energy Arc v0.24, L-EN-4) — RESERVED. The ADR-0002 DAG edge for the energy axis: `parents[0]` is the content hash of the training-run/ golden payload, so this reading says 'these are the joules that run cost'. The window matches that run exactly (duration_s 7200 == 2 h) and `layer` matches its `strategy` ('pipeline'); 4800 Wh over 2 h == 2400.0 W == the run's 4 devices at 600 W each. Lineage lives inside the hashed content (ADR-0002 P1), so rewiring it breaks both the content hash and the signature. DCGM-sourced (the accelerator meter, per the v0.23 'Train the watt' theme).",
+  "layer0_reading": {
+    "schema": "presidio-hardened/energy-reading@1",
+    "attested_content": {
+      "reading": "energy-reading@1",
+      "window_start": "2026-07-02T00:00:00+00:00",
+      "window_end": "2026-07-02T02:00:00+00:00",
+      "energy_wh": "4800.0",
+      "mean_power_w": "2400.0",
+      "source": "dcgm",
+      "layer": "pipeline",
+      "energy_chain_head": "6cf76f69d0d27b89d1207a1ee4c20c254a37640886c21835762b045693c48e44",
+      "parents": [
+        "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378"
+      ]
+    },
+    "content_hash": "289e15522a7221c8566861e4b56c44dce250843729f6b46046cc1563f736aa5b",
+    "source": "presidio-hardened-arch-translucency",
+    "source_version": "test",
+    "generated_at": "2026-07-02T00:00:00+00:00"
+  },
+  "signed_content": {
+    "reading": "energy-reading@1",
+    "window_start": "2026-07-02T00:00:00+00:00",
+    "window_end": "2026-07-02T02:00:00+00:00",
+    "energy_wh": "4800.0",
+    "mean_power_w": "2400.0",
+    "source": "dcgm",
+    "layer": "pipeline",
+    "energy_chain_head": "6cf76f69d0d27b89d1207a1ee4c20c254a37640886c21835762b045693c48e44",
+    "parents": [
+      "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378"
+    ]
+  },
+  "expected_content_hash": "289e15522a7221c8566861e4b56c44dce250843729f6b46046cc1563f736aa5b",
+  "energy_chain_head": "6cf76f69d0d27b89d1207a1ee4c20c254a37640886c21835762b045693c48e44",
+  "energy_chain_head_is_opaque_to_family": true,
+  "verifies_with_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "trust_store": {
+    "presidio-hardened-arch-translucency": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  },
+  "parents_present": true,
+  "window_seconds": 7200,
+  "parent_content_hash": "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378",
+  "parent_vector": "vectors/training-run/valid-envelope.json"
+}

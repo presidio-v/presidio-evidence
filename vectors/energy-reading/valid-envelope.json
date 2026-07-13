@@ -1,0 +1,19 @@
+{
+  "schema": "presidio-hardened/evidence-ref@1",
+  "use_case": "energy-reading",
+  "source": "presidio-hardened-arch-translucency",
+  "source_version": "test",
+  "generated_at": "2026-07-02T00:00:00+00:00",
+  "evidence": [
+    {
+      "item_id": "energy-reading/golden-window",
+      "source": "presidio-hardened-arch-translucency",
+      "source_version": "test",
+      "ledger_ref": "atx-energy-ledger:seq/1",
+      "content_hash": "ea5b9b1aaa6ed6cccceb863ea5eb0aadf7d0b16bd4c56ea37b7db3f27a73ac87",
+      "signer": "presidio-hardened-arch-translucency",
+      "signature": "51cd2d8c332d9e54b87c0ca27df424cd9362cacf035f692f257c23fa1ac784b16860d81cebeb733587d554e165b726fe20696370bc04f1fb9980e3dcc1d3940a",
+      "claimed_at": "2026-07-02T00:00:00+00:00"
+    }
+  ]
+}

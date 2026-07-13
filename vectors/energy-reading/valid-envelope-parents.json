@@ -1,0 +1,19 @@
+{
+  "schema": "presidio-hardened/evidence-ref@1",
+  "use_case": "energy-reading",
+  "source": "presidio-hardened-arch-translucency",
+  "source_version": "test",
+  "generated_at": "2026-07-02T00:00:00+00:00",
+  "evidence": [
+    {
+      "item_id": "energy-reading/golden-training-window",
+      "source": "presidio-hardened-arch-translucency",
+      "source_version": "test",
+      "ledger_ref": "atx-energy-ledger:seq/1",
+      "content_hash": "289e15522a7221c8566861e4b56c44dce250843729f6b46046cc1563f736aa5b",
+      "signer": "presidio-hardened-arch-translucency",
+      "signature": "1506e2764a040b65eb1543c17f6853ca3ee4da25617b4aa82056e7d576bfb2dff686a07e0b2f0d8e0506b6bea95d4821a2c83d9cd847c01bf8f3d35ec617ed09",
+      "claimed_at": "2026-07-02T00:00:00+00:00"
+    }
+  ]
+}

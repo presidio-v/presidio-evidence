@@ -189,19 +189,21 @@ fn envelope_end_to_end_verifies() {
     ));
 }
 
-/// ADR-0002 provenance-parents + ikigov T-B4: a parents-bearing payload wrapped
-/// in the frozen evidence-ref@1 envelope must recompute its content hash and
-/// verify, for both new golden vectors.
-fn assert_provenance_vector_verifies(kind: &str) {
-    let envelope = load(&format!("vectors/{kind}/valid-envelope.json"));
-    let notes = load(&format!("vectors/{kind}/valid-envelope.notes.json"));
+/// Common Layer-0 reading checks for a `{dir}/{stem}(.notes).json` vector pair:
+/// the content hash recomputes from the signed content, the envelope ref and the
+/// producer record both bind it, the signature verifies against the trust store,
+/// and signer replay fails closed. `parents` (ADR-0002) is checked when present —
+/// it is optional per P3, so its absence is not a failure here.
+fn assert_reading_vector_verifies(dir: &str, stem: &str) {
+    let envelope = load(&format!("vectors/{dir}/{stem}.json"));
+    let notes = load(&format!("vectors/{dir}/{stem}.notes.json"));
     let evidence_ref = &envelope["evidence"][0];
 
     // content_hash recomputes from the signed content; the Layer-0 producer
     // record binds the same content and hash.
     let content = canonical_string(&notes["signed_content"]).unwrap();
     let expected_ch = notes["expected_content_hash"].as_str().unwrap();
-    assert_eq!(sha256_hex(content.as_bytes()), expected_ch, "{kind} hash");
+    assert_eq!(sha256_hex(content.as_bytes()), expected_ch, "{dir} hash");
     assert_eq!(evidence_ref["content_hash"].as_str().unwrap(), expected_ch);
     assert_eq!(
         notes["layer0_reading"]["content_hash"].as_str().unwrap(),
@@ -212,13 +214,20 @@ fn assert_provenance_vector_verifies(kind: &str) {
         notes["signed_content"]
     );
 
-    // parents are inside the hashed content and follow the family hex rule.
-    for parent in notes["signed_content"]["parents"].as_array().unwrap() {
-        let p = parent.as_str().unwrap();
-        assert!((8..=128).contains(&p.len()), "{kind} parent length");
-        assert!(p
-            .bytes()
-            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)));
+    // parents, when present, are inside the hashed content and follow the family
+    // hex rule.
+    if let Some(parents) = notes["signed_content"]["parents"].as_array() {
+        assert!(
+            !parents.is_empty(),
+            "{dir} parents must be omitted, not empty"
+        );
+        for parent in parents {
+            let p = parent.as_str().unwrap();
+            assert!((8..=128).contains(&p.len()), "{dir} parent length");
+            assert!(p
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)));
+        }
     }
 
     // Signature verifies against the trust-store key; signer replay fails.
@@ -227,7 +236,7 @@ fn assert_provenance_vector_verifies(kind: &str) {
     let sig_hex = evidence_ref["signature"].as_str().unwrap();
     assert!(
         verify_ed25519(expected_ch, signer, sig_hex, pub_hex),
-        "{kind} verify"
+        "{dir} verify"
     );
     assert!(!verify_ed25519(
         expected_ch,
@@ -235,6 +244,21 @@ fn assert_provenance_vector_verifies(kind: &str) {
         sig_hex,
         pub_hex
     ));
+}
+
+/// ADR-0002 provenance-parents + ikigov T-B4: a parents-bearing payload wrapped
+/// in the frozen evidence-ref@1 envelope must recompute its content hash and
+/// verify, for both new golden vectors. These two vectors MUST carry parents.
+fn assert_provenance_vector_verifies(kind: &str) {
+    assert_reading_vector_verifies(kind, "valid-envelope");
+    let notes = load(&format!("vectors/{kind}/valid-envelope.notes.json"));
+    assert!(
+        !notes["signed_content"]["parents"]
+            .as_array()
+            .unwrap()
+            .is_empty(),
+        "{kind} must be parents-bearing"
+    );
 }
 
 #[test]
@@ -539,4 +563,92 @@ fn treasury_checkpoint_id_reproduces() {
     let mut bad = envelope.clone();
     bad["as_of"] = serde_json::json!(1.5);
     assert!(canonical_string(&bad).is_err());
+}
+
+// ── energy-reading@1 reservation (pat Energy Arc v0.24 "Sign the watt") ──────
+
+#[test]
+fn energy_reading_vectors_verify() {
+    // Both reserved vectors are ordinary Layer-0 readings under the frozen
+    // evidence-ref@1 envelope: nominal (parents omitted, ADR-0002 P3) and
+    // parents-bearing (the energy-axis DAG edge).
+    assert_reading_vector_verifies("energy-reading", "valid-envelope");
+    assert_reading_vector_verifies("energy-reading", "valid-envelope-parents");
+}
+
+#[test]
+fn energy_quantities_are_decimal_strings_not_floats() {
+    // ADR-0001 D1: the canonical profile rejects floats, so joules and watts
+    // travel as decimal strings. A bare float makes the payload uncanonicalizable
+    // — and therefore unhashable — so the reading could not be evidence at all.
+    for stem in ["valid-envelope", "valid-envelope-parents"] {
+        let notes = load(&format!("vectors/energy-reading/{stem}.notes.json"));
+        let content = &notes["signed_content"];
+        for field in ["energy_wh", "mean_power_w"] {
+            let value = content[field].as_str().unwrap_or_else(|| {
+                panic!("{stem}: {field} must be a string, not a number");
+            });
+            assert!(value.parse::<f64>().unwrap() > 0.0);
+        }
+        assert!(canonical_string(content).is_ok());
+
+        let mut bad = content.clone();
+        bad["energy_wh"] = serde_json::json!(12.5);
+        assert!(
+            canonical_string(&bad).is_err(),
+            "{stem}: a float energy_wh must be rejected by the canonicalizer"
+        );
+    }
+}
+
+#[test]
+fn energy_chain_head_is_inside_the_signed_content() {
+    // pat ADR-0011 §2 / the ADR-0010 anchoring deferral: the head of the chained
+    // energy_observations store is part of what gets signed, so a signed reading
+    // attests the unrewritten history behind it. The family pins the hex
+    // discipline only — walking the chain is pat's job.
+    for stem in ["valid-envelope", "valid-envelope-parents"] {
+        let notes = load(&format!("vectors/energy-reading/{stem}.notes.json"));
+        let head = notes["signed_content"]["energy_chain_head"]
+            .as_str()
+            .unwrap();
+        assert_eq!(head.len(), 64, "{stem}: chain head must be sha256 hex");
+        assert!(head
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)));
+        assert_eq!(notes["energy_chain_head"].as_str().unwrap(), head);
+    }
+}
+
+#[test]
+fn energy_reading_parents_point_at_training_run_payload() {
+    // The energy-axis DAG edge (ADR-0002): the reading names the training-run
+    // payload as its parent — "these are the joules that run cost".
+    let tr_notes = load("vectors/training-run/valid-envelope.notes.json");
+    let notes = load("vectors/energy-reading/valid-envelope-parents.notes.json");
+    let training_ch = tr_notes["expected_content_hash"].as_str().unwrap();
+
+    assert_eq!(
+        notes["signed_content"]["parents"],
+        serde_json::json!([training_ch])
+    );
+    assert_eq!(notes["parent_content_hash"].as_str().unwrap(), training_ch);
+
+    // The edge is coherent: the window covers the run, the layer is its strategy.
+    assert_eq!(
+        notes["window_seconds"],
+        tr_notes["signed_content"]["duration_s"]
+    );
+    assert_eq!(
+        notes["signed_content"]["layer"],
+        tr_notes["signed_content"]["strategy"]
+    );
+}
+
+#[test]
+fn nominal_energy_reading_omits_parents() {
+    // ADR-0002 P3: parents is omitted when empty, never emitted as [].
+    let notes = load("vectors/energy-reading/valid-envelope.notes.json");
+    assert!(notes["signed_content"]["parents"].is_null());
+    assert_eq!(notes["parents_present"], serde_json::json!(false));
 }

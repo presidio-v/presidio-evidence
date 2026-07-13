@@ -94,3 +94,72 @@ Requirements (gated on founder sign-off of ADR-0003):
 - R5 `vectors/README.md` row + README Layers/consumers note. Version NOT bumped (release mechanics are founder-signed).
 
 **Release gate (founder):** ADR-0003 signed/accepted by V.S. (2026-07-05); local remediation gate green on macOS (2026-07-05); any signed tag remains a founder release step.
+
+## energy-reading@1 — reservation for the pat Energy Arc (2026-07-13, cross-repo)
+
+Cross-repo reservation requested by `presidio-hardened-arch-translucency` (its
+PRESIDIO-REQ "Energy Arc", **L-EN-4**, targeting pat v0.24.0 "Sign the watt").
+pat will emit a new key-less Layer-0 reading type under the **unchanged**
+`evidence-ref@1` envelope (the v0.17 pattern: producer emits unsigned, sidecar
+signs). The family side is reserved *now* because the golden vector has the
+longest lead time — the L-EV-7 precedent is that pat pins a presidio-evidence
+vector byte-for-byte, so the vector is the contract, not a description of one.
+
+**Status: RESERVED, not yet emitted.** No shipped producer writes an
+`energy-reading@1` today. The vectors below are what pat v0.24 must reproduce.
+
+Delivered (append-only; **no pre-existing vector touched** — generator `--check`
++ `git status` verified; the `evidence-ref@1` envelope is untouched):
+
+- R1 **`vectors/energy-reading/valid-envelope.json`** (+ `.notes.json`) — nominal:
+  a 5-minute Kepler-sourced serving-layer window, `parents` **omitted** (ADR-0002
+  P3). `energy_wh "12.5"` over 300 s == `mean_power_w "150.0"`.
+- R2 **`vectors/energy-reading/valid-envelope-parents.json`** (+ `.notes.json`) —
+  the **energy-axis DAG edge** (ADR-0002): `parents[0]` is the `training-run/`
+  golden payload's content hash `9173…b378`, so the reading says *"these are the
+  joules that run cost"*. Window matches that run exactly (`duration_s 7200` ==
+  2 h), `layer` matches its `strategy` (`"pipeline"`), and `4800.0` Wh over 2 h
+  == `2400.0` W == its 4 devices at 600 W each. DCGM-sourced.
+- R3 **Float discipline (ADR-0001 D1).** Joules and watts never cross the wire as
+  floats: `energy_wh` / `mean_power_w` are shortest-round-trip decimal **strings**.
+  Both payloads are ASCII-only, float-free and integer-free. Both suites assert a
+  float `energy_wh` is *rejected* by the canonicalizer — an unhashable reading
+  cannot be evidence at all.
+- R4 **`energy_chain_head`** — lowercase-hex SHA-256 head of pat's chained
+  `energy_observations` store (pat ADR-0011 §2, a parallel chain with the ADR-0010
+  discipline). It lives **inside the signed content**, so each signed reading
+  attests the unrewritten history behind it; this is pat's discharge of the
+  ADR-0010 external-anchoring deferral. The family treats it as **opaque** and
+  pins only the hex discipline — walking the chain is pat's job, not ours.
+- R5 **Conformance in both suites:** Python `tests/test_energy_reading_vectors.py`
+  (12 tests: hash recompute, signature verify + cross-signer replay, decimal-string
+  discipline, mean-power-agrees-with-window, chain-head placement, parents
+  omitted/present, DAG edge) — **130 passed, 3 skipped**; Rust
+  `rust/tests/conformance.rs` +5 tests — **22 passed**, fmt + clippy clean. The
+  shared `assert_provenance_vector_verifies` helper was generalised to
+  `assert_reading_vector_verifies` so `parents` is checked *when present* (P3
+  makes it optional); the two provenance vectors still assert it is non-empty.
+- R6 `vectors/README.md` row. Version NOT bumped (release mechanics are
+  founder-signed).
+
+**Open naming questions — must be settled BEFORE merge.** A published vector is
+append-only (ADR-0001 D5): merging this PR *freezes* the field names below. They
+are pat's draft, carried through verbatim rather than silently reconciled with
+`training-run@1` conventions; each is raised on the PR:
+
+1. `reading: "energy-reading@1"` **inside** `attested_content` duplicates the
+   Layer-0 wrapper's `schema`. No other family payload (`training-run@1`,
+   `slo-reading@1`, `workshop-attestation@1`) carries its own type id in the
+   signed content. Drop it, or accept the divergence?
+2. `source: "kepler" | "rapl" | "dcgm" | "analytic"` **collides** with the
+   `source` field at both the reading-wrapper and envelope levels, where it means
+   the *producer repo* (`presidio-hardened-arch-translucency`). Rename to `meter`
+   or `measurement_source`?
+3. `layer` is documented as "pat serving layer **or** training strategy" — one
+   field, two domains. `training-run@1` calls the latter `strategy`.
+4. `window_start` / `window_end` (RFC3339 instants) diverge from `slo-reading@1`'s
+   `window: "5m"` (a duration string). Both are defensible; pick one for the family.
+5. Should Layer-0 reading types get a central registry constant (e.g.
+   `LAYER0_READING_SCHEMA_IDS` in `_constants.py`, mirrored in Rust)? Today they
+   are enumerated only in the generator, this file, `vectors/README.md`, and the
+   two test lanes — there is no single list to add to.
