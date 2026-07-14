@@ -22,6 +22,21 @@ ASSURANCE_TIERS = ("attested", "optimistic", "zk")
 #: this tier); ADR-0003.
 DEFAULT_ASSURANCE_TIER = "attested"
 
+#: Layer-0 reading schema ids — the payload types the family emits *inside* an
+#: evidence-ref envelope (the producer's ``layer0_reading.schema``). Reserving a
+#: new reading type is a one-place change here, plus its golden vectors: both
+#: conformance lanes assert this tuple, the generator's output, and the vectors
+#: tree agree exactly, so a type added in one place and forgotten in another
+#: fails the build. Not a hash surface — this list may grow (a reading type,
+#: once published, is frozen by ADR-0001 D5 like any other vector).
+#: Mirrored by ``rust/src/lib.rs``.
+LAYER0_READING_SCHEMA_IDS = (
+    "presidio-hardened/energy-reading@1",
+    "presidio-hardened/slo-reading@1",
+    "presidio-hardened/training-run@1",
+    "presidio-hardened/workshop-attestation@1",
+)
+
 #: Verifier-side trust-store schema id (ADR-0001 D3).
 TRUST_STORE_SCHEMA_ID = "presidio-hardened/trust-store@1"
 

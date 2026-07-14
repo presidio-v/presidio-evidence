@@ -94,3 +94,73 @@ Requirements (gated on founder sign-off of ADR-0003):
 - R5 `vectors/README.md` row + README Layers/consumers note. Version NOT bumped (release mechanics are founder-signed).
 
 **Release gate (founder):** ADR-0003 signed/accepted by V.S. (2026-07-05); local remediation gate green on macOS (2026-07-05); any signed tag remains a founder release step.
+
+## energy-reading@1 — reservation for the pat Energy Arc (2026-07-13, cross-repo)
+
+Cross-repo reservation requested by `presidio-hardened-arch-translucency` (its
+PRESIDIO-REQ "Energy Arc", **L-EN-4**, targeting pat v0.24.0 "Sign the watt").
+pat will emit a new key-less Layer-0 reading type under the **unchanged**
+`evidence-ref@1` envelope (the v0.17 pattern: producer emits unsigned, sidecar
+signs). The family side is reserved *now* because the golden vector has the
+longest lead time — the L-EV-7 precedent is that pat pins a presidio-evidence
+vector byte-for-byte, so the vector is the contract, not a description of one.
+
+**Status: RESERVED, not yet emitted.** No shipped producer writes an
+`energy-reading@1` today. The vectors below are what pat v0.24 must reproduce.
+
+Delivered (append-only; **no pre-existing vector touched** — generator `--check`
++ `git status` verified; the `evidence-ref@1` envelope is untouched):
+
+- R1 **`vectors/energy-reading/valid-envelope.json`** (+ `.notes.json`) — nominal:
+  a 5-minute Kepler-sourced serving-layer window, `parents` **omitted** (ADR-0002
+  P3). `energy_wh "12.5"` over 300 s == `mean_power_w "150.0"`.
+- R2 **`vectors/energy-reading/valid-envelope-parents.json`** (+ `.notes.json`) —
+  the **energy-axis DAG edge** (ADR-0002): `parents[0]` is the `training-run/`
+  golden payload's content hash `9173…b378`, so the reading says *"these are the
+  joules that run cost"*. Window matches that run exactly (`duration_s 7200` ==
+  2 h), `strategy` matches its `strategy` (`"pipeline"`), and `4800.0` Wh over 2 h
+  == `2400.0` W == its 4 devices at 600 W each. DCGM-sourced.
+- R3 **Float discipline (ADR-0001 D1).** Joules and watts never cross the wire as
+  floats: `energy_wh` / `mean_power_w` are shortest-round-trip decimal **strings**.
+  Both payloads are ASCII-only, float-free and integer-free. Both suites assert a
+  float `energy_wh` is *rejected* by the canonicalizer — an unhashable reading
+  cannot be evidence at all.
+- R4 **`energy_chain_head`** — lowercase-hex SHA-256 head of pat's chained
+  `energy_observations` store (pat ADR-0011 §2, a parallel chain with the ADR-0010
+  discipline). It lives **inside the signed content**, so each signed reading
+  attests the unrewritten history behind it; this is pat's discharge of the
+  ADR-0010 external-anchoring deferral. The family treats it as **opaque** and
+  pins only the hex discipline — walking the chain is pat's job, not ours.
+- R5 **Conformance in both suites:** Python `tests/test_energy_reading_vectors.py`
+  and Rust `rust/tests/conformance.rs` independently check hash/signature binding,
+  decimal-string spelling, RFC3339 UTC windows, the energy/mean-power equation,
+  chain-head placement, `parents`, the DAG edge, the `layer`/`strategy` XOR, and
+  the frozen serving-layer vocabulary. **Remediation gate 2026-07-14:** Python
+  **148 passed, 3 skipped** with 100% coverage; Rust **28 passed**, fmt + clippy
+  clean. The shared
+  `assert_provenance_vector_verifies` helper was generalised to
+  `assert_reading_vector_verifies` so `parents` is checked *when present* (P3
+  makes it optional); the two provenance vectors still assert it is non-empty.
+- R6 `vectors/README.md` row. Version NOT bumped (release mechanics are
+  founder-signed).
+
+**Field shape settled by maintainer decision on PR #14 (2026-07-13).** Merging
+freezes these choices under ADR-0001 D5:
+
+1. The payload carries no internal type id. The Layer-0 wrapper's `schema` is
+   authoritative, avoiding two potentially divergent type declarations inside
+   one signed reading.
+2. `meter` is exactly `"rapl" | "kepler" | "dcgm"`. `source` remains wrapper and
+   envelope metadata naming the producer repository. `"analytic"` is excluded:
+   modelled energy is not a measured reading (pat invariant E1a).
+3. Exactly one of `layer` or `strategy` is present. `layer` is exactly
+   `"container" | "pod" | "deployment" | "node"`; `strategy` reuses the
+   training-run vocabulary. The generator and both conformance lanes reject an
+   unknown serving layer and both/neither field combinations.
+4. `window_start` and `window_end` are RFC3339 UTC instants inside the signed
+   content. Both conformance lanes require a positive window and independently
+   re-derive `mean_power_w` from `energy_wh` and the window duration.
+5. `LAYER0_READING_SCHEMA_IDS` is the central registry, mirrored in Python and
+   Rust. The declared registry, generator output, and committed vectors tree must
+   agree exactly in both lanes. `workshop-leavebehind@1` remains outside because
+   it is an owner-signed manifest, not a Layer-0 reading.

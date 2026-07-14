@@ -32,6 +32,27 @@ EXPECTED_SIG = (
 EXPECTED_HSIG = "2e7af6d2882dd53847dcf3032e1fe36e58c5a879c224ea97b505b3e3b626b87a"
 CH, SIGNER, KEY = "abc123def456", "presidio-hardened-ai", "shared-key"
 
+# energy-reading@1 frozen vocabulary (PR #14 maintainer decision, 2026-07-13).
+# Kept next to the generator rather than in the runtime package: this repository
+# reserves and tests the wire contract; the producer owns runtime validation.
+ENERGY_METERS = ("rapl", "kepler", "dcgm")
+ENERGY_LAYERS = ("container", "pod", "deployment", "node")
+
+
+def _validate_energy_content(content: dict) -> None:
+    """Fail closed before an energy-reading@1 vector enters the contract."""
+    if "reading" in content:
+        raise RuntimeError("energy-reading@1 carries no payload-internal type id")
+    if "source" in content:
+        raise RuntimeError("energy-reading@1 uses meter; source is wrapper metadata")
+    meter = content.get("meter")
+    if meter not in ENERGY_METERS:
+        raise RuntimeError(f"meter must be one of {ENERGY_METERS}: {meter!r}")
+    if ("layer" in content) == ("strategy" in content):
+        raise RuntimeError("energy-reading@1 requires exactly one of layer / strategy")
+    if "layer" in content and content["layer"] not in ENERGY_LAYERS:
+        raise RuntimeError(f"layer must be one of {ENERGY_LAYERS}: {content['layer']!r}")
+
 
 def cb(payload: object) -> bytes:
     """Canonical JSON bytes — must byte-match every producer/consumer."""
@@ -669,6 +690,174 @@ def build() -> dict[pathlib.Path, dict]:
         "verifies_with_public_key_hex": pub,
         "trust_store": {SIGNER: {"alg": "ed25519", "public_key": pub}},
     }
+
+    # ------------------------------------------------------------------
+    # (f) arch-translucency: presidio-hardened/energy-reading@1 — RESERVATION
+    # for the pat Energy Arc v0.24.0 "Sign the watt" (pat PRESIDIO-REQ L-EN-4).
+    # Key-less Layer-0 reading under the frozen evidence-ref@1 envelope (the
+    # v0.17 pattern: producer emits unsigned, sidecar signs). Purely additive —
+    # no envelope change, no existing vector touched.
+    #
+    # `energy_chain_head` is the head of pat's chained energy_observations store
+    # (pat ADR-0011 §2, a parallel chain with the ADR-0010 discipline). It is
+    # the discharge of the ADR-0010 external-anchoring deferral: each signed
+    # reading attests the unrewritten history behind it. The family treats it as
+    # an OPAQUE lowercase-hex sha256 — this repo pins the hex discipline, not
+    # pat's chain semantics. The golden value below is a deterministic
+    # placeholder built with the ADR-0010 record-hash shape
+    # (sha256(canonical({content, prev_hash, seq})), genesis prev_hash "0"*64).
+    #
+    # Float discipline: joules/watts never cross the wire as floats (ADR-0001
+    # D1 rejects them). energy_wh / mean_power_w are shortest-round-trip decimal
+    # STRINGS. Payload is ASCII-only, float-free and integer-free.
+    #
+    # Field shape settled by the maintainer on PR #14 (2026-07-13):
+    #   - no payload-internal type id: the Layer-0 wrapper's `schema` is
+    #     authoritative, and no other family payload repeats its own type inside
+    #     the signed content (a duplicate invites skew between the two);
+    #   - `meter` (not `source`) names the measuring device, so it cannot collide
+    #     with the family `source` (= producer repo) at the wrapper/envelope
+    #     levels. Enum is MEASURED sources only — "analytic" was removed: per pat
+    #     invariant E1a ("pat never signs a watt it did not measure"), modelled
+    #     energy is never a *reading*;
+    #   - `layer` XOR `strategy`: two optional fields, exactly one present,
+    #     validated fail-closed in both lanes. `layer` is a pat serving layer;
+    #     `strategy` is a training strategy, reusing training-run@1's name.
+    ENERGY_GENESIS = "0" * 64
+    energy_chain_head = hashlib.sha256(
+        cb({"content": {"golden": "energy-observation"}, "prev_hash": ENERGY_GENESIS, "seq": 1})
+    ).hexdigest()
+
+    def energy_vectors(
+        stem: str,
+        item_id: str,
+        use_case: str,
+        content: dict,
+        description: str,
+        extra_notes: dict | None = None,
+    ) -> None:
+        # Fail closed at generation: a vector that violates the settled shape is
+        # never written, so the contract cannot drift in through the generator.
+        _validate_energy_content(content)
+
+        ch = hashlib.sha256(cb(content)).hexdigest()
+        sig = sk.sign(cb({"content_hash": ch, "signer": ATX_SIGNER})).hex()
+        reading = {
+            "schema": "presidio-hardened/energy-reading@1",
+            "attested_content": content,
+            "content_hash": ch,
+            "source": ATX_SIGNER,
+            "source_version": "test",
+            "generated_at": "2026-07-02T00:00:00+00:00",
+        }
+        ref = {
+            "item_id": item_id,
+            "source": ATX_SIGNER,
+            "source_version": "test",
+            "ledger_ref": "atx-energy-ledger:seq/1",
+            "content_hash": ch,
+            "signer": ATX_SIGNER,
+            "signature": sig,
+            "claimed_at": "2026-07-02T00:00:00+00:00",
+        }
+        out[V / f"energy-reading/{stem}.json"] = {
+            "schema": "presidio-hardened/evidence-ref@1",
+            "use_case": use_case,
+            "source": ATX_SIGNER,
+            "source_version": "test",
+            "generated_at": "2026-07-02T00:00:00+00:00",
+            "evidence": [ref],
+        }
+        notes = {
+            "description": description,
+            "layer0_reading": reading,
+            "signed_content": content,
+            "expected_content_hash": ch,
+            "energy_chain_head": content["energy_chain_head"],
+            "energy_chain_head_is_opaque_to_family": True,
+            "verifies_with_public_key_hex": pub,
+            "trust_store": {ATX_SIGNER: {"alg": "ed25519", "public_key": pub}},
+        }
+        notes.update(extra_notes or {})
+        out[V / f"energy-reading/{stem}.notes.json"] = notes
+
+    # (f.1) Nominal: a 5-minute Kepler-sourced serving-layer reading, no parents.
+    # 12.5 Wh over 300 s == 150.0 W mean — the two figures agree by construction,
+    # and the conformance suites re-derive one from the other.
+    energy_vectors(
+        stem="valid-envelope",
+        item_id="energy-reading/golden-window",
+        use_case="energy-reading",
+        content={
+            "window_start": "2026-07-02T00:00:00+00:00",
+            "window_end": "2026-07-02T00:05:00+00:00",
+            "energy_wh": "12.5",
+            "mean_power_w": "150.0",
+            "meter": "kepler",
+            "layer": "pod",
+            "energy_chain_head": energy_chain_head,
+        },
+        description=(
+            "Nominal presidio-hardened/energy-reading@1 Layer-0 reading (pat "
+            "Energy Arc v0.24 'Sign the watt', L-EN-4) — RESERVED, not yet "
+            "emitted by a shipped producer. A 5-minute serving-layer window "
+            "measured by Kepler, key-lessly emitted by pat and signed into the "
+            "frozen evidence-ref@1 envelope by the bridge sidecar (v0.17 "
+            "pattern). Carries `layer` (a pat serving layer) and NOT `strategy` — "
+            "exactly one of the two is always present. `parents` is absent — "
+            "ADR-0002 P3 omits it when empty. The payload carries no type id of "
+            "its own: the Layer-0 wrapper's `schema` is authoritative. `meter` "
+            "names the measuring device and is deliberately distinct from the "
+            "family `source` (= producer repo) at the wrapper/envelope levels. "
+            "energy_wh and mean_power_w are shortest-round-trip decimal STRINGS, "
+            "never floats (ADR-0001 D1): 12.5 Wh over 300 s == 150.0 W, and the "
+            "conformance suites re-derive the mean power from the energy and the "
+            "window. `energy_chain_head` is the head of pat's chained "
+            "energy_observations store (pat ADR-0011 §2) — opaque here; this "
+            "repo pins only the lowercase-hex discipline."
+        ),
+        extra_notes={"parents_present": False, "window_seconds": 300},
+    )
+
+    # (f.2) Parents-bearing: the ADR-0002 DAG edge. This reading covers exactly
+    # the golden training run's window (duration_s 7200 == 2 h) and names its
+    # payload as parent — "these are the joules that run cost". 4800 Wh over 2 h
+    # == 2400.0 W == 4 devices (training-run device_count) at 600 W each.
+    energy_vectors(
+        stem="valid-envelope-parents",
+        item_id="energy-reading/golden-training-window",
+        use_case="energy-reading",
+        content={
+            "window_start": "2026-07-02T00:00:00+00:00",
+            "window_end": "2026-07-02T02:00:00+00:00",
+            "energy_wh": "4800.0",
+            "mean_power_w": "2400.0",
+            "meter": "dcgm",
+            "strategy": "pipeline",
+            "energy_chain_head": energy_chain_head,
+            "parents": [tr_ch],
+        },
+        description=(
+            "Parents-bearing presidio-hardened/energy-reading@1 (pat Energy Arc "
+            "v0.24, L-EN-4) — RESERVED. The ADR-0002 DAG edge for the energy "
+            "axis: `parents[0]` is the content hash of the training-run/ golden "
+            "payload, so this reading says 'these are the joules that run cost'. "
+            "This is a TRAINING window, so it carries `strategy` (not `layer`) — "
+            "the same field name training-run@1 uses, holding the same value "
+            "('pipeline'). The window matches that run exactly (duration_s 7200 "
+            "== 2 h); 4800 Wh over 2 h == 2400.0 W == the run's 4 devices at 600 "
+            "W each. Lineage lives inside the hashed content (ADR-0002 P1), so "
+            "rewiring it breaks both the content hash and the signature. "
+            "DCGM-metered (the accelerator device, per the v0.23 'Train the watt' "
+            "theme)."
+        ),
+        extra_notes={
+            "parents_present": True,
+            "window_seconds": 7200,
+            "parent_content_hash": tr_ch,
+            "parent_vector": "vectors/training-run/valid-envelope.json",
+        },
+    )
 
     v2_invalid = [
         (

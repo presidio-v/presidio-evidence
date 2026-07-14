@@ -27,6 +27,18 @@ pub const ASSURANCE_TIERS: [&str; 3] = ["attested", "optimistic", "zk"];
 /// this tier); ADR-0003.
 pub const DEFAULT_ASSURANCE_TIER: &str = "attested";
 
+/// Layer-0 reading schema ids — the payload types the family emits *inside* an
+/// evidence-ref envelope (the producer's `layer0_reading.schema`). Reserving a
+/// new reading type is a one-place change here, plus its golden vectors: both
+/// conformance lanes assert this list, the generator's output, and the vectors
+/// tree agree exactly. Mirrors `_constants.py`.
+pub const LAYER0_READING_SCHEMA_IDS: [&str; 4] = [
+    "presidio-hardened/energy-reading@1",
+    "presidio-hardened/slo-reading@1",
+    "presidio-hardened/training-run@1",
+    "presidio-hardened/workshop-attestation@1",
+];
+
 /// Verifier-side trust-store schema id (ADR-0001 D3).
 pub const TRUST_STORE_SCHEMA_ID: &str = "presidio-hardened/trust-store@1";
 
