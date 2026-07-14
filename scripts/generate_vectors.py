@@ -32,6 +32,27 @@ EXPECTED_SIG = (
 EXPECTED_HSIG = "2e7af6d2882dd53847dcf3032e1fe36e58c5a879c224ea97b505b3e3b626b87a"
 CH, SIGNER, KEY = "abc123def456", "presidio-hardened-ai", "shared-key"
 
+# energy-reading@1 frozen vocabulary (PR #14 maintainer decision, 2026-07-13).
+# Kept next to the generator rather than in the runtime package: this repository
+# reserves and tests the wire contract; the producer owns runtime validation.
+ENERGY_METERS = ("rapl", "kepler", "dcgm")
+ENERGY_LAYERS = ("container", "pod", "deployment", "node")
+
+
+def _validate_energy_content(content: dict) -> None:
+    """Fail closed before an energy-reading@1 vector enters the contract."""
+    if "reading" in content:
+        raise RuntimeError("energy-reading@1 carries no payload-internal type id")
+    if "source" in content:
+        raise RuntimeError("energy-reading@1 uses meter; source is wrapper metadata")
+    meter = content.get("meter")
+    if meter not in ENERGY_METERS:
+        raise RuntimeError(f"meter must be one of {ENERGY_METERS}: {meter!r}")
+    if ("layer" in content) == ("strategy" in content):
+        raise RuntimeError("energy-reading@1 requires exactly one of layer / strategy")
+    if "layer" in content and content["layer"] not in ENERGY_LAYERS:
+        raise RuntimeError(f"layer must be one of {ENERGY_LAYERS}: {content['layer']!r}")
+
 
 def cb(payload: object) -> bytes:
     """Canonical JSON bytes — must byte-match every producer/consumer."""
@@ -702,7 +723,6 @@ def build() -> dict[pathlib.Path, dict]:
     #   - `layer` XOR `strategy`: two optional fields, exactly one present,
     #     validated fail-closed in both lanes. `layer` is a pat serving layer;
     #     `strategy` is a training strategy, reusing training-run@1's name.
-    ENERGY_METERS = ("rapl", "kepler", "dcgm")
     ENERGY_GENESIS = "0" * 64
     energy_chain_head = hashlib.sha256(
         cb({"content": {"golden": "energy-observation"}, "prev_hash": ENERGY_GENESIS, "seq": 1})
@@ -718,12 +738,7 @@ def build() -> dict[pathlib.Path, dict]:
     ) -> None:
         # Fail closed at generation: a vector that violates the settled shape is
         # never written, so the contract cannot drift in through the generator.
-        if "reading" in content:
-            raise RuntimeError("energy-reading@1 carries no payload-internal type id")
-        if content["meter"] not in ENERGY_METERS:
-            raise RuntimeError(f"meter must be one of {ENERGY_METERS}: {content['meter']!r}")
-        if ("layer" in content) == ("strategy" in content):
-            raise RuntimeError("energy-reading@1 requires exactly one of layer / strategy")
+        _validate_energy_content(content)
 
         ch = hashlib.sha256(cb(content)).hexdigest()
         sig = sk.sign(cb({"content_hash": ch, "signer": ATX_SIGNER})).hex()

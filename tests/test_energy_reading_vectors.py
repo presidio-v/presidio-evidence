@@ -18,6 +18,7 @@ energy reading auditable rather than merely present:
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 from datetime import datetime
 from decimal import Decimal
 
@@ -37,6 +38,16 @@ HEX = "0123456789abcdef"
 #: *reading*. If analytic figures ever need evidencing that is a distinct reading
 #: type, not a meter value. (PR #14 maintainer decision, 2026-07-13.)
 METERS = ("rapl", "kepler", "dcgm")
+LAYERS = ("container", "pod", "deployment", "node")
+
+
+def _load_generator():
+    spec = importlib.util.spec_from_file_location(
+        "generate_vectors_energy", VECTORS.parent / "scripts" / "generate_vectors.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def exactly_one_of_layer_or_strategy(content: dict) -> bool:
@@ -179,6 +190,18 @@ def test_serving_vector_uses_layer_and_training_vector_uses_strategy() -> None:
     assert "strategy" not in nominal["signed_content"]
     assert parents["signed_content"]["strategy"] == "pipeline"
     assert "layer" not in parents["signed_content"]
+
+
+@pytest.mark.parametrize("layer", LAYERS)
+def test_generator_accepts_every_frozen_serving_layer(layer: str) -> None:
+    generator = _load_generator()
+    generator._validate_energy_content({"meter": "rapl", "layer": layer})
+
+
+def test_generator_rejects_unknown_serving_layer() -> None:
+    generator = _load_generator()
+    with pytest.raises(RuntimeError, match="layer must be one of"):
+        generator._validate_energy_content({"meter": "rapl", "layer": "database"})
 
 
 def test_nominal_vector_omits_parents() -> None:

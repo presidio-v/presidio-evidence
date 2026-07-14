@@ -118,7 +118,7 @@ Delivered (append-only; **no pre-existing vector touched** — generator `--chec
   the **energy-axis DAG edge** (ADR-0002): `parents[0]` is the `training-run/`
   golden payload's content hash `9173…b378`, so the reading says *"these are the
   joules that run cost"*. Window matches that run exactly (`duration_s 7200` ==
-  2 h), `layer` matches its `strategy` (`"pipeline"`), and `4800.0` Wh over 2 h
+  2 h), `strategy` matches its `strategy` (`"pipeline"`), and `4800.0` Wh over 2 h
   == `2400.0` W == its 4 devices at 600 W each. DCGM-sourced.
 - R3 **Float discipline (ADR-0001 D1).** Joules and watts never cross the wire as
   floats: `energy_wh` / `mean_power_w` are shortest-round-trip decimal **strings**.
@@ -132,34 +132,35 @@ Delivered (append-only; **no pre-existing vector touched** — generator `--chec
   ADR-0010 external-anchoring deferral. The family treats it as **opaque** and
   pins only the hex discipline — walking the chain is pat's job, not ours.
 - R5 **Conformance in both suites:** Python `tests/test_energy_reading_vectors.py`
-  (12 tests: hash recompute, signature verify + cross-signer replay, decimal-string
-  discipline, mean-power-agrees-with-window, chain-head placement, parents
-  omitted/present, DAG edge) — **130 passed, 3 skipped**; Rust
-  `rust/tests/conformance.rs` +5 tests — **22 passed**, fmt + clippy clean. The
-  shared `assert_provenance_vector_verifies` helper was generalised to
+  and Rust `rust/tests/conformance.rs` independently check hash/signature binding,
+  decimal-string spelling, RFC3339 UTC windows, the energy/mean-power equation,
+  chain-head placement, `parents`, the DAG edge, the `layer`/`strategy` XOR, and
+  the frozen serving-layer vocabulary. **Remediation gate 2026-07-14:** Python
+  **148 passed, 3 skipped** with 100% coverage; Rust **28 passed**, fmt + clippy
+  clean. The shared
+  `assert_provenance_vector_verifies` helper was generalised to
   `assert_reading_vector_verifies` so `parents` is checked *when present* (P3
   makes it optional); the two provenance vectors still assert it is non-empty.
 - R6 `vectors/README.md` row. Version NOT bumped (release mechanics are
   founder-signed).
 
-**Open naming questions — must be settled BEFORE merge.** A published vector is
-append-only (ADR-0001 D5): merging this PR *freezes* the field names below. They
-are pat's draft, carried through verbatim rather than silently reconciled with
-`training-run@1` conventions; each is raised on the PR:
+**Field shape settled by maintainer decision on PR #14 (2026-07-13).** Merging
+freezes these choices under ADR-0001 D5:
 
-1. `reading: "energy-reading@1"` **inside** `attested_content` duplicates the
-   Layer-0 wrapper's `schema`. No other family payload (`training-run@1`,
-   `slo-reading@1`, `workshop-attestation@1`) carries its own type id in the
-   signed content. Drop it, or accept the divergence?
-2. `source: "kepler" | "rapl" | "dcgm" | "analytic"` **collides** with the
-   `source` field at both the reading-wrapper and envelope levels, where it means
-   the *producer repo* (`presidio-hardened-arch-translucency`). Rename to `meter`
-   or `measurement_source`?
-3. `layer` is documented as "pat serving layer **or** training strategy" — one
-   field, two domains. `training-run@1` calls the latter `strategy`.
-4. `window_start` / `window_end` (RFC3339 instants) diverge from `slo-reading@1`'s
-   `window: "5m"` (a duration string). Both are defensible; pick one for the family.
-5. Should Layer-0 reading types get a central registry constant (e.g.
-   `LAYER0_READING_SCHEMA_IDS` in `_constants.py`, mirrored in Rust)? Today they
-   are enumerated only in the generator, this file, `vectors/README.md`, and the
-   two test lanes — there is no single list to add to.
+1. The payload carries no internal type id. The Layer-0 wrapper's `schema` is
+   authoritative, avoiding two potentially divergent type declarations inside
+   one signed reading.
+2. `meter` is exactly `"rapl" | "kepler" | "dcgm"`. `source` remains wrapper and
+   envelope metadata naming the producer repository. `"analytic"` is excluded:
+   modelled energy is not a measured reading (pat invariant E1a).
+3. Exactly one of `layer` or `strategy` is present. `layer` is exactly
+   `"container" | "pod" | "deployment" | "node"`; `strategy` reuses the
+   training-run vocabulary. The generator and both conformance lanes reject an
+   unknown serving layer and both/neither field combinations.
+4. `window_start` and `window_end` are RFC3339 UTC instants inside the signed
+   content. Both conformance lanes require a positive window and independently
+   re-derive `mean_power_w` from `energy_wh` and the window duration.
+5. `LAYER0_READING_SCHEMA_IDS` is the central registry, mirrored in Python and
+   Rust. The declared registry, generator output, and committed vectors tree must
+   agree exactly in both lanes. `workshop-leavebehind@1` remains outside because
+   it is an owner-signed manifest, not a Layer-0 reading.

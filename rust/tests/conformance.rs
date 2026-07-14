@@ -7,6 +7,7 @@
 //! sorted-key, compact, non-ASCII-escaped JSON — the same profile as Python's
 //! `json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False)`.
 
+use chrono::{DateTime, FixedOffset};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hmac::{Hmac, KeyInit, Mac};
 use serde_json::Value;
@@ -588,7 +589,13 @@ fn energy_quantities_are_decimal_strings_not_floats() {
             let value = content[field].as_str().unwrap_or_else(|| {
                 panic!("{stem}: {field} must be a string, not a number");
             });
-            assert!(value.parse::<f64>().unwrap() > 0.0);
+            let parsed = value.parse::<f64>().unwrap();
+            assert!(parsed.is_finite() && parsed > 0.0);
+            assert_eq!(
+                serde_json::to_string(&parsed).unwrap(),
+                value,
+                "{stem}: {field} must use the shortest round-trip decimal spelling"
+            );
         }
         assert!(canonical_string(content).is_ok());
 
@@ -597,6 +604,45 @@ fn energy_quantities_are_decimal_strings_not_floats() {
         assert!(
             canonical_string(&bad).is_err(),
             "{stem}: a float energy_wh must be rejected by the canonicalizer"
+        );
+    }
+}
+
+#[test]
+fn energy_mean_power_agrees_with_rfc3339_utc_window() {
+    // Independent Rust-side enforcement of the semantic relation pinned by the
+    // Python lane: both endpoints are absolute RFC3339 UTC instants and
+    // mean_power_w == energy_wh / window_hours.
+    for stem in ["valid-envelope", "valid-envelope-parents"] {
+        let notes = load(&format!("vectors/energy-reading/{stem}.notes.json"));
+        let content = &notes["signed_content"];
+        let start =
+            DateTime::<FixedOffset>::parse_from_rfc3339(content["window_start"].as_str().unwrap())
+                .unwrap();
+        let end =
+            DateTime::<FixedOffset>::parse_from_rfc3339(content["window_end"].as_str().unwrap())
+                .unwrap();
+        assert_eq!(start.offset().local_minus_utc(), 0, "{stem}: start UTC");
+        assert_eq!(end.offset().local_minus_utc(), 0, "{stem}: end UTC");
+
+        let seconds = end.signed_duration_since(start).num_seconds();
+        assert!(seconds > 0, "{stem}: window must be positive");
+        assert_eq!(seconds, notes["window_seconds"].as_i64().unwrap());
+
+        let energy_wh = content["energy_wh"]
+            .as_str()
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
+        let actual_w = content["mean_power_w"]
+            .as_str()
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
+        let expected_w = energy_wh / (seconds as f64 / 3600.0);
+        assert!(
+            (actual_w - expected_w).abs() <= f64::EPSILON * expected_w.abs().max(1.0),
+            "{stem}: mean power disagrees with energy/window"
         );
     }
 }
@@ -650,6 +696,16 @@ fn energy_reading_parents_point_at_training_run_payload() {
 /// closed on both-present and on neither-present.
 fn exactly_one_of_layer_or_strategy(content: &Value) -> bool {
     content.get("layer").is_some() != content.get("strategy").is_some()
+}
+
+const ENERGY_LAYERS: [&str; 4] = ["container", "pod", "deployment", "node"];
+
+fn energy_layer_is_valid(content: &Value) -> bool {
+    match content.get("layer") {
+        None => true,
+        Some(Value::String(layer)) => ENERGY_LAYERS.contains(&layer.as_str()),
+        Some(_) => false,
+    }
 }
 
 #[test]
@@ -712,6 +768,7 @@ fn energy_reading_has_exactly_one_of_layer_or_strategy() {
         let notes = load(&format!("vectors/energy-reading/{stem}.notes.json"));
         let content = &notes["signed_content"];
         assert!(exactly_one_of_layer_or_strategy(content), "{stem}: XOR");
+        assert!(energy_layer_is_valid(content), "{stem}: serving layer");
 
         let mut both = content.clone();
         both["layer"] = serde_json::json!("pod");
@@ -730,6 +787,7 @@ fn energy_reading_has_exactly_one_of_layer_or_strategy() {
     // The serving vector uses `layer`; the training vector uses `strategy`.
     let nominal = load("vectors/energy-reading/valid-envelope.notes.json");
     assert_eq!(nominal["signed_content"]["layer"].as_str().unwrap(), "pod");
+    assert!(ENERGY_LAYERS.contains(&nominal["signed_content"]["layer"].as_str().unwrap()));
     assert!(nominal["signed_content"]["strategy"].is_null());
 
     let parents = load("vectors/energy-reading/valid-envelope-parents.notes.json");
@@ -738,6 +796,11 @@ fn energy_reading_has_exactly_one_of_layer_or_strategy() {
         "pipeline"
     );
     assert!(parents["signed_content"]["layer"].is_null());
+
+    // The maintainer-frozen serving-layer vocabulary is fail-closed.
+    let mut unknown_layer = nominal["signed_content"].clone();
+    unknown_layer["layer"] = serde_json::json!("database");
+    assert!(!energy_layer_is_valid(&unknown_layer));
 }
 
 #[test]

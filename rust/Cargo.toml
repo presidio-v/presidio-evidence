@@ -10,6 +10,7 @@ publish = false # private until founder clearance (ADR-0001 D6); never auto-publ
 # Constants-only for now (ADR-0001 scope: conformance tests before code).
 
 [dev-dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 sha2 = "0.11"
 hmac = "0.13"
