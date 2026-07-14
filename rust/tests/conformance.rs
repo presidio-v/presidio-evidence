@@ -634,15 +634,110 @@ fn energy_reading_parents_point_at_training_run_payload() {
     );
     assert_eq!(notes["parent_content_hash"].as_str().unwrap(), training_ch);
 
-    // The edge is coherent: the window covers the run, the layer is its strategy.
+    // The edge is coherent: the window covers the run, and the reading names the
+    // same strategy the run does — the same field name, holding the same value.
     assert_eq!(
         notes["window_seconds"],
         tr_notes["signed_content"]["duration_s"]
     );
     assert_eq!(
-        notes["signed_content"]["layer"],
+        notes["signed_content"]["strategy"],
         tr_notes["signed_content"]["strategy"]
     );
+}
+
+/// The settled `layer` XOR `strategy` rule. A conforming producer/consumer fails
+/// closed on both-present and on neither-present.
+fn exactly_one_of_layer_or_strategy(content: &Value) -> bool {
+    content.get("layer").is_some() != content.get("strategy").is_some()
+}
+
+#[test]
+fn energy_reading_payload_carries_no_type_id_of_its_own() {
+    // The Layer-0 wrapper's `schema` is authoritative. No family payload repeats
+    // its own type id inside the signed content — a duplicate could skew from the
+    // wrapper, leaving two disagreeing answers to "what is this?" in one signature.
+    for stem in ["valid-envelope", "valid-envelope-parents"] {
+        let notes = load(&format!("vectors/energy-reading/{stem}.notes.json"));
+        assert!(
+            notes["signed_content"]["reading"].is_null(),
+            "{stem}: payload must not carry its own type id"
+        );
+        assert_eq!(
+            notes["layer0_reading"]["schema"].as_str().unwrap(),
+            "presidio-hardened/energy-reading@1"
+        );
+    }
+}
+
+#[test]
+fn energy_meter_is_a_measured_source_and_does_not_collide_with_source() {
+    // `meter` names the measuring device; `source` keeps its family meaning
+    // (producer repo) at the wrapper/envelope levels. Measured sources only — an
+    // "analytic" meter would let modelled energy masquerade as a reading, which
+    // pat invariant E1a forbids.
+    const METERS: [&str; 3] = ["rapl", "kepler", "dcgm"];
+    assert!(!METERS.contains(&"analytic"));
+
+    for stem in ["valid-envelope", "valid-envelope-parents"] {
+        let envelope = load(&format!("vectors/energy-reading/{stem}.json"));
+        let notes = load(&format!("vectors/energy-reading/{stem}.notes.json"));
+        let content = &notes["signed_content"];
+
+        let meter = content["meter"].as_str().unwrap();
+        assert!(METERS.contains(&meter), "{stem}: unknown meter {meter}");
+
+        // `source` is NOT a payload field; it means the producer repo further out.
+        assert!(
+            content["source"].is_null(),
+            "{stem}: source must not be a payload field"
+        );
+        assert_eq!(
+            notes["layer0_reading"]["source"].as_str().unwrap(),
+            "presidio-hardened-arch-translucency"
+        );
+        assert_eq!(
+            envelope["evidence"][0]["source"].as_str().unwrap(),
+            "presidio-hardened-arch-translucency"
+        );
+    }
+}
+
+#[test]
+fn energy_reading_has_exactly_one_of_layer_or_strategy() {
+    // Fail-closed: a serving reading carries `layer`, a training reading carries
+    // `strategy` (training-run@1's name for it). Both or neither is rejected —
+    // one field spanning two domains is what made the original `layer` ambiguous.
+    for stem in ["valid-envelope", "valid-envelope-parents"] {
+        let notes = load(&format!("vectors/energy-reading/{stem}.notes.json"));
+        let content = &notes["signed_content"];
+        assert!(exactly_one_of_layer_or_strategy(content), "{stem}: XOR");
+
+        let mut both = content.clone();
+        both["layer"] = serde_json::json!("pod");
+        both["strategy"] = serde_json::json!("pipeline");
+        assert!(!exactly_one_of_layer_or_strategy(&both), "{stem}: both");
+
+        let mut neither = content.clone();
+        neither.as_object_mut().unwrap().remove("layer");
+        neither.as_object_mut().unwrap().remove("strategy");
+        assert!(
+            !exactly_one_of_layer_or_strategy(&neither),
+            "{stem}: neither"
+        );
+    }
+
+    // The serving vector uses `layer`; the training vector uses `strategy`.
+    let nominal = load("vectors/energy-reading/valid-envelope.notes.json");
+    assert_eq!(nominal["signed_content"]["layer"].as_str().unwrap(), "pod");
+    assert!(nominal["signed_content"]["strategy"].is_null());
+
+    let parents = load("vectors/energy-reading/valid-envelope-parents.notes.json");
+    assert_eq!(
+        parents["signed_content"]["strategy"].as_str().unwrap(),
+        "pipeline"
+    );
+    assert!(parents["signed_content"]["layer"].is_null());
 }
 
 #[test]
@@ -651,4 +746,63 @@ fn nominal_energy_reading_omits_parents() {
     let notes = load("vectors/energy-reading/valid-envelope.notes.json");
     assert!(notes["signed_content"]["parents"].is_null());
     assert_eq!(notes["parents_present"], serde_json::json!(false));
+}
+
+// ── Layer-0 reading-type registry (PR #14 decision 5) ────────────────────────
+
+/// Every `layer0_reading.schema` committed under `vectors/`.
+fn schema_ids_from_vectors_tree() -> Vec<String> {
+    fn walk(dir: &Path, out: &mut Vec<String>) {
+        for entry in fs::read_dir(dir).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(&path, out);
+            } else if path.to_string_lossy().ends_with(".notes.json") {
+                let doc: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+                if let Some(schema) = doc["layer0_reading"]["schema"].as_str() {
+                    out.push(schema.to_string());
+                }
+            }
+        }
+    }
+    let mut ids = Vec::new();
+    walk(&root().join("vectors"), &mut ids);
+    ids.sort();
+    ids.dedup();
+    ids
+}
+
+#[test]
+fn reading_registry_matches_the_committed_vectors_tree() {
+    // The registry is only load-bearing if it cannot drift from what is actually
+    // committed: a reading type added to the vectors tree but not to the constant
+    // (or vice versa) fails here, in both lanes.
+    assert_eq!(
+        presidio_evidence::LAYER0_READING_SCHEMA_IDS.to_vec(),
+        schema_ids_from_vectors_tree()
+    );
+}
+
+#[test]
+fn reading_registry_mirrors_python_side() {
+    // Mirrors src/presidio_evidence/_constants.py LAYER0_READING_SCHEMA_IDS —
+    // sorted, deduped, and boundary-checked: workshop-leavebehind@1 is an
+    // owner-signed manifest, not a Layer-0 reading, so it is deliberately absent.
+    assert_eq!(
+        presidio_evidence::LAYER0_READING_SCHEMA_IDS,
+        [
+            "presidio-hardened/energy-reading@1",
+            "presidio-hardened/slo-reading@1",
+            "presidio-hardened/training-run@1",
+            "presidio-hardened/workshop-attestation@1",
+        ]
+    );
+    let mut sorted = presidio_evidence::LAYER0_READING_SCHEMA_IDS.to_vec();
+    sorted.sort();
+    assert_eq!(
+        presidio_evidence::LAYER0_READING_SCHEMA_IDS.to_vec(),
+        sorted
+    );
+    assert!(!presidio_evidence::LAYER0_READING_SCHEMA_IDS
+        .contains(&"presidio-hardened/workshop-leavebehind@1"));
 }

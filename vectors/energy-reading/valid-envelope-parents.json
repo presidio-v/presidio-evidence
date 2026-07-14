@@ -10,9 +10,9 @@
       "source": "presidio-hardened-arch-translucency",
       "source_version": "test",
       "ledger_ref": "atx-energy-ledger:seq/1",
-      "content_hash": "289e15522a7221c8566861e4b56c44dce250843729f6b46046cc1563f736aa5b",
+      "content_hash": "391083ae2426dc1dc0616a77fb9760d3ddca2c976ee16dd600ade78c9246a3d1",
       "signer": "presidio-hardened-arch-translucency",
-      "signature": "1506e2764a040b65eb1543c17f6853ca3ee4da25617b4aa82056e7d576bfb2dff686a07e0b2f0d8e0506b6bea95d4821a2c83d9cd847c01bf8f3d35ec617ed09",
+      "signature": "c1909f47f01e1a73760d28d6381a37611e9e5134d8e943dbcaaef38f4b65b47df6c5cb6f9672d85713abaddcc7bed9d6cb6f04c14f2a3964d08524fbb23da80e",
       "claimed_at": "2026-07-02T00:00:00+00:00"
     }
   ]

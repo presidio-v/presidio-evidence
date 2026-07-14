@@ -689,6 +689,20 @@ def build() -> dict[pathlib.Path, dict]:
     # Float discipline: joules/watts never cross the wire as floats (ADR-0001
     # D1 rejects them). energy_wh / mean_power_w are shortest-round-trip decimal
     # STRINGS. Payload is ASCII-only, float-free and integer-free.
+    #
+    # Field shape settled by the maintainer on PR #14 (2026-07-13):
+    #   - no payload-internal type id: the Layer-0 wrapper's `schema` is
+    #     authoritative, and no other family payload repeats its own type inside
+    #     the signed content (a duplicate invites skew between the two);
+    #   - `meter` (not `source`) names the measuring device, so it cannot collide
+    #     with the family `source` (= producer repo) at the wrapper/envelope
+    #     levels. Enum is MEASURED sources only — "analytic" was removed: per pat
+    #     invariant E1a ("pat never signs a watt it did not measure"), modelled
+    #     energy is never a *reading*;
+    #   - `layer` XOR `strategy`: two optional fields, exactly one present,
+    #     validated fail-closed in both lanes. `layer` is a pat serving layer;
+    #     `strategy` is a training strategy, reusing training-run@1's name.
+    ENERGY_METERS = ("rapl", "kepler", "dcgm")
     ENERGY_GENESIS = "0" * 64
     energy_chain_head = hashlib.sha256(
         cb({"content": {"golden": "energy-observation"}, "prev_hash": ENERGY_GENESIS, "seq": 1})
@@ -702,6 +716,15 @@ def build() -> dict[pathlib.Path, dict]:
         description: str,
         extra_notes: dict | None = None,
     ) -> None:
+        # Fail closed at generation: a vector that violates the settled shape is
+        # never written, so the contract cannot drift in through the generator.
+        if "reading" in content:
+            raise RuntimeError("energy-reading@1 carries no payload-internal type id")
+        if content["meter"] not in ENERGY_METERS:
+            raise RuntimeError(f"meter must be one of {ENERGY_METERS}: {content['meter']!r}")
+        if ("layer" in content) == ("strategy" in content):
+            raise RuntimeError("energy-reading@1 requires exactly one of layer / strategy")
+
         ch = hashlib.sha256(cb(content)).hexdigest()
         sig = sk.sign(cb({"content_hash": ch, "signer": ATX_SIGNER})).hex()
         reading = {
@@ -751,12 +774,11 @@ def build() -> dict[pathlib.Path, dict]:
         item_id="energy-reading/golden-window",
         use_case="energy-reading",
         content={
-            "reading": "energy-reading@1",
             "window_start": "2026-07-02T00:00:00+00:00",
             "window_end": "2026-07-02T00:05:00+00:00",
             "energy_wh": "12.5",
             "mean_power_w": "150.0",
-            "source": "kepler",
+            "meter": "kepler",
             "layer": "pod",
             "energy_chain_head": energy_chain_head,
         },
@@ -766,7 +788,12 @@ def build() -> dict[pathlib.Path, dict]:
             "emitted by a shipped producer. A 5-minute serving-layer window "
             "measured by Kepler, key-lessly emitted by pat and signed into the "
             "frozen evidence-ref@1 envelope by the bridge sidecar (v0.17 "
-            "pattern). `parents` is absent — ADR-0002 P3 omits it when empty. "
+            "pattern). Carries `layer` (a pat serving layer) and NOT `strategy` — "
+            "exactly one of the two is always present. `parents` is absent — "
+            "ADR-0002 P3 omits it when empty. The payload carries no type id of "
+            "its own: the Layer-0 wrapper's `schema` is authoritative. `meter` "
+            "names the measuring device and is deliberately distinct from the "
+            "family `source` (= producer repo) at the wrapper/envelope levels. "
             "energy_wh and mean_power_w are shortest-round-trip decimal STRINGS, "
             "never floats (ADR-0001 D1): 12.5 Wh over 300 s == 150.0 W, and the "
             "conformance suites re-derive the mean power from the energy and the "
@@ -786,13 +813,12 @@ def build() -> dict[pathlib.Path, dict]:
         item_id="energy-reading/golden-training-window",
         use_case="energy-reading",
         content={
-            "reading": "energy-reading@1",
             "window_start": "2026-07-02T00:00:00+00:00",
             "window_end": "2026-07-02T02:00:00+00:00",
             "energy_wh": "4800.0",
             "mean_power_w": "2400.0",
-            "source": "dcgm",
-            "layer": "pipeline",
+            "meter": "dcgm",
+            "strategy": "pipeline",
             "energy_chain_head": energy_chain_head,
             "parents": [tr_ch],
         },
@@ -801,12 +827,14 @@ def build() -> dict[pathlib.Path, dict]:
             "v0.24, L-EN-4) — RESERVED. The ADR-0002 DAG edge for the energy "
             "axis: `parents[0]` is the content hash of the training-run/ golden "
             "payload, so this reading says 'these are the joules that run cost'. "
-            "The window matches that run exactly (duration_s 7200 == 2 h) and "
-            "`layer` matches its `strategy` ('pipeline'); 4800 Wh over 2 h == "
-            "2400.0 W == the run's 4 devices at 600 W each. Lineage lives inside "
-            "the hashed content (ADR-0002 P1), so rewiring it breaks both the "
-            "content hash and the signature. DCGM-sourced (the accelerator meter, "
-            "per the v0.23 'Train the watt' theme)."
+            "This is a TRAINING window, so it carries `strategy` (not `layer`) — "
+            "the same field name training-run@1 uses, holding the same value "
+            "('pipeline'). The window matches that run exactly (duration_s 7200 "
+            "== 2 h); 4800 Wh over 2 h == 2400.0 W == the run's 4 devices at 600 "
+            "W each. Lineage lives inside the hashed content (ADR-0002 P1), so "
+            "rewiring it breaks both the content hash and the signature. "
+            "DCGM-metered (the accelerator device, per the v0.23 'Train the watt' "
+            "theme)."
         ),
         extra_notes={
             "parents_present": True,

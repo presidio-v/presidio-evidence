@@ -1,33 +1,31 @@
 {
-  "description": "Nominal presidio-hardened/energy-reading@1 Layer-0 reading (pat Energy Arc v0.24 'Sign the watt', L-EN-4) — RESERVED, not yet emitted by a shipped producer. A 5-minute serving-layer window measured by Kepler, key-lessly emitted by pat and signed into the frozen evidence-ref@1 envelope by the bridge sidecar (v0.17 pattern). `parents` is absent — ADR-0002 P3 omits it when empty. energy_wh and mean_power_w are shortest-round-trip decimal STRINGS, never floats (ADR-0001 D1): 12.5 Wh over 300 s == 150.0 W, and the conformance suites re-derive the mean power from the energy and the window. `energy_chain_head` is the head of pat's chained energy_observations store (pat ADR-0011 §2) — opaque here; this repo pins only the lowercase-hex discipline.",
+  "description": "Nominal presidio-hardened/energy-reading@1 Layer-0 reading (pat Energy Arc v0.24 'Sign the watt', L-EN-4) — RESERVED, not yet emitted by a shipped producer. A 5-minute serving-layer window measured by Kepler, key-lessly emitted by pat and signed into the frozen evidence-ref@1 envelope by the bridge sidecar (v0.17 pattern). Carries `layer` (a pat serving layer) and NOT `strategy` — exactly one of the two is always present. `parents` is absent — ADR-0002 P3 omits it when empty. The payload carries no type id of its own: the Layer-0 wrapper's `schema` is authoritative. `meter` names the measuring device and is deliberately distinct from the family `source` (= producer repo) at the wrapper/envelope levels. energy_wh and mean_power_w are shortest-round-trip decimal STRINGS, never floats (ADR-0001 D1): 12.5 Wh over 300 s == 150.0 W, and the conformance suites re-derive the mean power from the energy and the window. `energy_chain_head` is the head of pat's chained energy_observations store (pat ADR-0011 §2) — opaque here; this repo pins only the lowercase-hex discipline.",
   "layer0_reading": {
     "schema": "presidio-hardened/energy-reading@1",
     "attested_content": {
-      "reading": "energy-reading@1",
       "window_start": "2026-07-02T00:00:00+00:00",
       "window_end": "2026-07-02T00:05:00+00:00",
       "energy_wh": "12.5",
       "mean_power_w": "150.0",
-      "source": "kepler",
+      "meter": "kepler",
       "layer": "pod",
       "energy_chain_head": "6cf76f69d0d27b89d1207a1ee4c20c254a37640886c21835762b045693c48e44"
     },
-    "content_hash": "ea5b9b1aaa6ed6cccceb863ea5eb0aadf7d0b16bd4c56ea37b7db3f27a73ac87",
+    "content_hash": "3950f28a608aea47e356e8096099042d8e3e2de73afaedf61ec547e167af0252",
     "source": "presidio-hardened-arch-translucency",
     "source_version": "test",
     "generated_at": "2026-07-02T00:00:00+00:00"
   },
   "signed_content": {
-    "reading": "energy-reading@1",
     "window_start": "2026-07-02T00:00:00+00:00",
     "window_end": "2026-07-02T00:05:00+00:00",
     "energy_wh": "12.5",
     "mean_power_w": "150.0",
-    "source": "kepler",
+    "meter": "kepler",
     "layer": "pod",
     "energy_chain_head": "6cf76f69d0d27b89d1207a1ee4c20c254a37640886c21835762b045693c48e44"
   },
-  "expected_content_hash": "ea5b9b1aaa6ed6cccceb863ea5eb0aadf7d0b16bd4c56ea37b7db3f27a73ac87",
+  "expected_content_hash": "3950f28a608aea47e356e8096099042d8e3e2de73afaedf61ec547e167af0252",
   "energy_chain_head": "6cf76f69d0d27b89d1207a1ee4c20c254a37640886c21835762b045693c48e44",
   "energy_chain_head_is_opaque_to_family": true,
   "verifies_with_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",

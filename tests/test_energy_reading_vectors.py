@@ -32,6 +32,18 @@ PARENTS = "valid-envelope-parents"
 SCHEMA_ID = "presidio-hardened/energy-reading@1"
 HEX = "0123456789abcdef"
 
+#: Measured sources only. "analytic" is deliberately absent: per pat invariant
+#: E1a ("pat never signs a watt it did not measure"), modelled energy is never a
+#: *reading*. If analytic figures ever need evidencing that is a distinct reading
+#: type, not a meter value. (PR #14 maintainer decision, 2026-07-13.)
+METERS = ("rapl", "kepler", "dcgm")
+
+
+def exactly_one_of_layer_or_strategy(content: dict) -> bool:
+    """The settled `layer` XOR `strategy` rule. A conforming producer/consumer
+    fails closed on both-present and on neither-present."""
+    return ("layer" in content) != ("strategy" in content)
+
 
 def _load(stem: str) -> tuple[dict, dict]:
     envelope = load_json(VECTORS / KIND / f"{stem}.json")
@@ -116,6 +128,59 @@ def test_energy_chain_head_is_inside_the_signed_content(stem: str) -> None:
     assert notes["energy_chain_head"] == head
 
 
+@pytest.mark.parametrize("stem", [NOMINAL, PARENTS])
+def test_payload_carries_no_type_id_of_its_own(stem: str) -> None:
+    """The Layer-0 wrapper's `schema` is authoritative. No family payload repeats
+    its own type id inside the signed content — a duplicate could skew from the
+    wrapper, leaving two disagreeing answers to "what is this?" inside one
+    signature."""
+    _, notes = _load(stem)
+    assert "reading" not in notes["signed_content"]
+    assert notes["layer0_reading"]["schema"] == SCHEMA_ID
+
+
+@pytest.mark.parametrize("stem", [NOMINAL, PARENTS])
+def test_meter_is_a_measured_source_and_does_not_collide_with_source(stem: str) -> None:
+    """`meter` names the measuring device; `source` keeps its family meaning
+    (producer repo) at the wrapper and envelope levels. The enum is measured
+    sources only — an "analytic" meter would let modelled energy masquerade as a
+    reading, which invariant E1a forbids."""
+    envelope, notes = _load(stem)
+    content = notes["signed_content"]
+    assert content["meter"] in METERS
+    assert "analytic" not in METERS
+    # `source` is NOT a payload field; it means the producer repo further out.
+    assert "source" not in content
+    assert notes["layer0_reading"]["source"] == "presidio-hardened-arch-translucency"
+    assert envelope["evidence"][0]["source"] == "presidio-hardened-arch-translucency"
+
+
+@pytest.mark.parametrize("stem", [NOMINAL, PARENTS])
+def test_exactly_one_of_layer_or_strategy(stem: str) -> None:
+    """`layer` XOR `strategy`, fail-closed: a serving reading carries `layer`, a
+    training reading carries `strategy` (training-run@1's name for it). Both
+    present or neither present is rejected — one field spanning two domains is
+    what made the original `layer` ambiguous."""
+    _, notes = _load(stem)
+    content = notes["signed_content"]
+    assert exactly_one_of_layer_or_strategy(content)
+
+    # Fail closed on both degenerate shapes.
+    both = dict(content, layer="pod", strategy="pipeline")
+    assert not exactly_one_of_layer_or_strategy(both)
+    neither = {k: v for k, v in content.items() if k not in ("layer", "strategy")}
+    assert not exactly_one_of_layer_or_strategy(neither)
+
+
+def test_serving_vector_uses_layer_and_training_vector_uses_strategy() -> None:
+    _, nominal = _load(NOMINAL)
+    _, parents = _load(PARENTS)
+    assert nominal["signed_content"]["layer"] == "pod"
+    assert "strategy" not in nominal["signed_content"]
+    assert parents["signed_content"]["strategy"] == "pipeline"
+    assert "layer" not in parents["signed_content"]
+
+
 def test_nominal_vector_omits_parents() -> None:
     """ADR-0002 P3: parents is omitted when empty, never emitted as []."""
     _, notes = _load(NOMINAL)
@@ -136,10 +201,11 @@ def test_parents_vector_points_at_the_training_run_payload() -> None:
     for parent in content["parents"]:
         assert 8 <= len(parent) <= 128
         assert all(c in HEX for c in parent)
-    # The edge is coherent: the window covers the run, and the layer is its strategy.
+    # The edge is coherent: the window covers the run, and the reading names the
+    # same strategy the run does — the same field name, holding the same value.
     tr_content = tr_notes["signed_content"]
     assert notes["window_seconds"] == tr_content["duration_s"]
-    assert content["layer"] == tr_content["strategy"]
+    assert content["strategy"] == tr_content["strategy"]
 
 
 def _load_training_run() -> tuple[dict, dict]:
