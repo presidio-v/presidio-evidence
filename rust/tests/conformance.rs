@@ -869,3 +869,67 @@ fn reading_registry_mirrors_python_side() {
     assert!(!presidio_evidence::LAYER0_READING_SCHEMA_IDS
         .contains(&"presidio-hardened/workshop-leavebehind@1"));
 }
+
+// ── training-run@1 energy-bearing vector (v0.23 optional energy fields) ───────
+
+#[test]
+fn training_run_energy_vector_verifies() {
+    // Ordinary Layer-0 reading checks (hash recompute, envelope + producer
+    // binding, signature, signer replay, parents-when-present).
+    assert_reading_vector_verifies("training-run", "valid-envelope-energy");
+
+    // L-EV-7: this family vector IS pat's local self-pin, byte for byte
+    // (arch-translucency test_training.py::test_training_run_energy_bearing_self_pin).
+    let notes = load("vectors/training-run/valid-envelope-energy.notes.json");
+    assert_eq!(
+        notes["expected_content_hash"].as_str().unwrap(),
+        "d674a11562def33ba92b54ab946d7782b1d3a111ec6a8f8f22a541788a57ffb0"
+    );
+}
+
+#[test]
+fn training_run_energy_quantities_are_decimal_strings_not_floats() {
+    // ADR-0001 D1: joules/watts are decimal strings; a float makes the payload
+    // uncanonicalizable and therefore unhashable.
+    let notes = load("vectors/training-run/valid-envelope-energy.notes.json");
+    let content = &notes["signed_content"];
+    for field in ["energy_wh", "mean_power_w"] {
+        let value = content[field]
+            .as_str()
+            .unwrap_or_else(|| panic!("{field} must be a string, not a number"));
+        assert!(value.parse::<f64>().unwrap() > 0.0);
+    }
+    assert!(canonical_string(content).is_ok());
+
+    let mut bad = content.clone();
+    bad["energy_wh"] = serde_json::json!(840.0);
+    assert!(
+        canonical_string(&bad).is_err(),
+        "a float energy_wh must be rejected by the canonicalizer"
+    );
+}
+
+#[test]
+fn training_run_energy_fields_are_additive_over_the_no_energy_vector() {
+    // ADR-0011: strip the optional fields and the payload re-hashes
+    // byte-identically to the pre-v0.23 valid-envelope vector — adding energy
+    // left that published vector untouched.
+    let energy = load("vectors/training-run/valid-envelope-energy.notes.json");
+    let base = load("vectors/training-run/valid-envelope.notes.json");
+
+    let mut stripped = energy["signed_content"].clone();
+    let obj = stripped.as_object_mut().unwrap();
+    obj.remove("energy_wh");
+    obj.remove("mean_power_w");
+    assert_eq!(stripped, base["signed_content"]);
+
+    let stripped_hash = sha256_hex(canonical_string(&stripped).unwrap().as_bytes());
+    assert_eq!(
+        stripped_hash,
+        base["expected_content_hash"].as_str().unwrap()
+    );
+    assert_eq!(
+        stripped_hash,
+        energy["no_energy_content_hash"].as_str().unwrap()
+    );
+}

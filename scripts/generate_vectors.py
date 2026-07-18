@@ -387,6 +387,77 @@ def build() -> dict[pathlib.Path, dict]:
         "trust_store": {ATX_SIGNER: {"alg": "ed25519", "public_key": pub}},
     }
 
+    # (a.energy) The v0.23 energy-bearing shape of training-run@1: the OPTIONAL
+    # energy_wh / mean_power_w fields added to the (a) payload and NOTHING else.
+    # Producer claims under the v0.18 trust boundary (PRESIDIO-REQ Energy Arc
+    # E1a), never observation-chain readings. Additive & conditional (ADR-0011):
+    # a record WITHOUT these fields re-hashes byte-identically to (a) — absent
+    # fields never perturb the canonical bytes — so the existing vector stays the
+    # no-energy pin and this is purely additive. String-decimals on the wire
+    # (ADR-0001 D1: floats rejected; shortest IEEE-754 round-trip). Physically
+    # coherent with duration_s: 7200 s == 2 h at 420 W == 840 Wh (the v0.23.0
+    # release audit fixed an earlier incoherent draft). Byte-for-byte cross-check
+    # against arch-translucency test_training.py::
+    # test_training_run_energy_bearing_self_pin (content hash d674a115…): pat
+    # swaps its local self-pin for THIS family vector (L-EV-7).
+    tr_energy_content = dict(tr_content)
+    tr_energy_content["energy_wh"] = "840.0"
+    tr_energy_content["mean_power_w"] = "420.0"
+    tr_energy_ch = hashlib.sha256(cb(tr_energy_content)).hexdigest()
+    tr_energy_sig = sk.sign(cb({"content_hash": tr_energy_ch, "signer": ATX_SIGNER})).hex()
+    tr_energy_reading = {
+        "schema": "presidio-hardened/training-run@1",
+        "attested_content": tr_energy_content,
+        "content_hash": tr_energy_ch,
+        "source": ATX_SIGNER,
+        "source_version": "test",
+        "generated_at": "2026-07-02T00:00:00+00:00",
+    }
+    tr_energy_ref = {
+        "item_id": "training-run/golden-run-energy",
+        "source": ATX_SIGNER,
+        "source_version": "test",
+        "ledger_ref": "atx-ledger:seq/1",
+        "content_hash": tr_energy_ch,
+        "signer": ATX_SIGNER,
+        "signature": tr_energy_sig,
+        "claimed_at": "2026-07-02T00:00:00+00:00",
+    }
+    out[V / "training-run/valid-envelope-energy.json"] = {
+        "schema": "presidio-hardened/evidence-ref@1",
+        "use_case": "training-run-provenance",
+        "source": ATX_SIGNER,
+        "source_version": "test",
+        "generated_at": "2026-07-02T00:00:00+00:00",
+        "evidence": [tr_energy_ref],
+    }
+    out[V / "training-run/valid-envelope-energy.notes.json"] = {
+        "description": (
+            "Companion to training-run/valid-envelope-energy.json. The v0.23 "
+            "energy-bearing shape of presidio-hardened/training-run@1: the "
+            "OPTIONAL energy_wh / mean_power_w fields (producer claims under the "
+            "v0.18 trust boundary, PRESIDIO-REQ Energy Arc E1a) added to the "
+            "training-run/valid-envelope payload and nothing else. Additive & "
+            "conditional (ADR-0011): a record WITHOUT them re-hashes "
+            "byte-identically to training-run/valid-envelope — absent fields "
+            "never perturb the canonical bytes — so `no_energy_content_hash` "
+            "here equals that vector's hash. energy_wh / mean_power_w are "
+            "shortest-round-trip decimal STRINGS, never floats (ADR-0001 D1), and "
+            "physically coherent with duration_s (7200 s == 2 h at 420 W == 840 "
+            "Wh). Byte-for-byte cross-checked against arch-translucency "
+            "test_training.py::test_training_run_energy_bearing_self_pin (content "
+            "hash d674a115…): pat swaps its local self-pin for THIS family vector "
+            "(L-EV-7)."
+        ),
+        "layer0_reading": tr_energy_reading,
+        "signed_content": tr_energy_content,
+        "expected_content_hash": tr_energy_ch,
+        "energy_fields_are_additive_optional": True,
+        "no_energy_content_hash": tr_ch,
+        "verifies_with_public_key_hex": pub,
+        "trust_store": {ATX_SIGNER: {"alg": "ed25519", "public_key": pub}},
+    }
+
     # (b) presidio-hardened/workshop-attestation@1 — the schema freeze for @1
     # (ikigov-assess PRESIDIO-REQ v0.22.0 T-B4). ASCII-only, float-free, no
     # integers. `attests` and `parents[0]` both point at (a)'s content hash,

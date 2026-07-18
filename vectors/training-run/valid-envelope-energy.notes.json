@@ -1,0 +1,46 @@
+{
+  "description": "Companion to training-run/valid-envelope-energy.json. The v0.23 energy-bearing shape of presidio-hardened/training-run@1: the OPTIONAL energy_wh / mean_power_w fields (producer claims under the v0.18 trust boundary, PRESIDIO-REQ Energy Arc E1a) added to the training-run/valid-envelope payload and nothing else. Additive & conditional (ADR-0011): a record WITHOUT them re-hashes byte-identically to training-run/valid-envelope — absent fields never perturb the canonical bytes — so `no_energy_content_hash` here equals that vector's hash. energy_wh / mean_power_w are shortest-round-trip decimal STRINGS, never floats (ADR-0001 D1), and physically coherent with duration_s (7200 s == 2 h at 420 W == 840 Wh). Byte-for-byte cross-checked against arch-translucency test_training.py::test_training_run_energy_bearing_self_pin (content hash d674a115…): pat swaps its local self-pin for THIS family vector (L-EV-7).",
+  "layer0_reading": {
+    "schema": "presidio-hardened/training-run@1",
+    "attested_content": {
+      "run_id": "golden-run",
+      "strategy": "pipeline",
+      "degree": 4,
+      "samples_per_second": 250,
+      "duration_s": 7200,
+      "device_count": 4,
+      "parents": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "energy_wh": "840.0",
+      "mean_power_w": "420.0"
+    },
+    "content_hash": "d674a11562def33ba92b54ab946d7782b1d3a111ec6a8f8f22a541788a57ffb0",
+    "source": "presidio-hardened-arch-translucency",
+    "source_version": "test",
+    "generated_at": "2026-07-02T00:00:00+00:00"
+  },
+  "signed_content": {
+    "run_id": "golden-run",
+    "strategy": "pipeline",
+    "degree": 4,
+    "samples_per_second": 250,
+    "duration_s": 7200,
+    "device_count": 4,
+    "parents": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "energy_wh": "840.0",
+    "mean_power_w": "420.0"
+  },
+  "expected_content_hash": "d674a11562def33ba92b54ab946d7782b1d3a111ec6a8f8f22a541788a57ffb0",
+  "energy_fields_are_additive_optional": true,
+  "no_energy_content_hash": "91733915b4797d71bfc42422dcfff105b512f613c4d6ad3f1013463d1853b378",
+  "verifies_with_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "trust_store": {
+    "presidio-hardened-arch-translucency": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  }
+}
