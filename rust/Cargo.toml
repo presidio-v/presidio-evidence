@@ -11,7 +11,7 @@ publish = false # private until founder clearance (ADR-0001 D6); never auto-publ
 
 [dev-dependencies]
 chrono = { version = "0.4", default-features = false, features = ["std"] }
-ed25519-dalek = { version = "2", features = ["rand_core"] }
+ed25519-dalek = { version = "3", features = ["rand_core"] }
 sha2 = "0.11"
 hmac = "0.13"
 hex = "0.4"
