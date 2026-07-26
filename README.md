@@ -44,11 +44,16 @@ cargo test --manifest-path rust/Cargo.toml   # Rust conformance (needs toolchain
 
 ```python
 from presidio_evidence import (
-    canonical_bytes, content_hash, sign_evidence, verify_ref,
-    load_trust_store, parse_document, build_envelope,
+    canonical_bytes,
+    content_hash,
+    sign_evidence,
+    verify_ref,
+    load_trust_store,
+    parse_document,
+    build_envelope,
 )
 
-ch = content_hash({"item_id": "T5", "status": "clean"})          # Layer 0
+ch = content_hash({"item_id": "T5", "status": "clean"})  # Layer 0
 sig = sign_evidence(ch, "my-signer", key=priv_hex, alg="ed25519")  # Layer 1
 trust = load_trust_store({"my-signer": {"alg": "ed25519", "public_key": pub_hex}})
 ok = verify_ref({"content_hash": ch, "signer": "my-signer", "signature": sig}, trust)
