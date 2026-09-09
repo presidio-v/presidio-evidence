@@ -12,6 +12,10 @@ consumers migrate onto (ADR-0001 action item 5, Q4 extraction):
 * Refs & trust — :class:`EvidenceRef`, :func:`parse_document` /
   :func:`load_evidence`, :func:`build_envelope`, :func:`load_trust_store`,
   :func:`verify_ref` (fail-closed).
+* Keys (ADR-0001 D3) — :func:`generate_ed25519_keypair`, :func:`public_key_hex`,
+  :func:`load_private_key` (``0600`` file or env var; never logged),
+  :func:`write_private_key`. The ``presidio-evidence`` CLI (D4) exposes
+  ``verify`` (exit 0/1) and ``keygen``.
 
 Ed25519 needs the optional ``cryptography`` dependency (``[crypto]`` extra);
 HMAC-SHA256 and Layer 0 are pure stdlib. The wire format is unchanged from
@@ -34,6 +38,12 @@ from ._constants import (
     TRUST_STORE_SCHEMA_ID,
 )
 from ._errors import EvidenceError
+from ._keys import (
+    generate_ed25519_keypair,
+    load_private_key,
+    public_key_hex,
+    write_private_key,
+)
 from ._refs import (
     EvidenceRef,
     build_envelope,
@@ -85,4 +95,9 @@ __all__ = [
     "build_envelope",
     "load_trust_store",
     "verify_ref",
+    # keys (ADR-0001 D3)
+    "generate_ed25519_keypair",
+    "public_key_hex",
+    "load_private_key",
+    "write_private_key",
 ]

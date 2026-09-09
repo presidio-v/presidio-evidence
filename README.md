@@ -62,6 +62,26 @@ ok = verify_ref({"content_hash": ch, "signer": "my-signer", "signature": sig}, t
 Ed25519 needs the optional extra: `pip install 'presidio-evidence[crypto]'`.
 HMAC-SHA256 and Layer 0 are stdlib-only. Verification is fail-closed.
 
+Key material (ADR-0001 D3): `load_private_key(path)` enforces mode `0600` on
+the file (or `load_private_key(env="VAR")` reads an env var); it never echoes
+the key. `generate_ed25519_keypair()` / `public_key_hex(priv)` produce the hex
+that goes into a trust store. Custody stays out-of-band — no key storage here.
+
+CLI (ADR-0001 D4), also `python -m presidio_evidence`:
+
+```bash
+presidio-evidence verify envelope.json --trust trust-store.json   # exit 0 iff every ref verifies
+presidio-evidence keygen --out signer.key --signer my-signer      # 0600 file; prints the trust-store entry
+```
+
+`verify` fails closed on any malformed input and on refs declaring an
+`optimistic`/`zk` tier — this verifier checks signature attestations only
+(ADR-0003 D6).
+
+The Rust crate (`rust/`) ships Layer 0 — `canonical_string`/`canonical_bytes`,
+`sha256_hex`/`content_hash`, `signing_message` — and no signature layer (treasury
+is keyless by design, ADR-0001 D1).
+
 ## Roadmap
 
 | Version | Scope | Status |

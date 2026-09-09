@@ -43,6 +43,9 @@ dev = [
     "cryptography>=42",
 ]
 
+[project.scripts]
+presidio-evidence = "presidio_evidence._cli:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/presidio_evidence"]
 
