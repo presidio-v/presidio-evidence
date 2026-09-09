@@ -1,17 +1,16 @@
 //! Cross-language conformance: this Rust toolchain must reproduce the golden
-//! vectors byte-for-byte. The reference canonicalizer lives in test code on
-//! purpose (conformance tests before library code, ADR-0001).
-//!
-//! Canonicalization note: `serde_json::Value` objects are `BTreeMap`-backed by
-//! default (the `preserve_order` feature is NOT enabled), so `to_string` yields
-//! sorted-key, compact, non-ASCII-escaped JSON — the same profile as Python's
-//! `json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False)`.
+//! vectors byte-for-byte. Layer 0 (canonical JSON, SHA-256 content addressing,
+//! the signer-bound signing message) is exercised through the crate's public
+//! API — extracted from this file in v0.3.0 after the vectors had pinned it
+//! (conformance tests before library code, ADR-0001). Signing/verification
+//! stays test-local: the crate has no signature layer by design (D1).
 
 use chrono::{DateTime, FixedOffset};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hmac::{Hmac, KeyInit, Mac};
+use presidio_evidence::{canonical_string, sha256_hex, signing_message};
 use serde_json::Value;
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -25,33 +24,6 @@ fn root() -> PathBuf {
 fn load(rel: &str) -> Value {
     let text = fs::read_to_string(root().join(rel)).unwrap_or_else(|e| panic!("{rel}: {e}"));
     serde_json::from_str(&text).unwrap_or_else(|e| panic!("{rel}: {e}"))
-}
-
-/// Layer-0 strict canonical JSON (ADR-0001 D1): floats rejected.
-fn canonical_string(value: &Value) -> Result<String, String> {
-    reject_floats(value)?;
-    // BTreeMap-backed objects serialize with sorted keys; compact by default.
-    serde_json::to_string(value).map_err(|e| e.to_string())
-}
-
-fn reject_floats(value: &Value) -> Result<(), String> {
-    match value {
-        Value::Number(n) if n.is_f64() => {
-            Err("floats are not permitted in canonical payloads (strict profile)".into())
-        }
-        Value::Array(items) => items.iter().try_for_each(reject_floats),
-        Value::Object(map) => map.values().try_for_each(reject_floats),
-        _ => Ok(()),
-    }
-}
-
-fn signing_message(content_hash: &str, signer: &str) -> String {
-    let payload = serde_json::json!({"content_hash": content_hash, "signer": signer});
-    canonical_string(&payload).unwrap()
-}
-
-fn sha256_hex(bytes: &[u8]) -> String {
-    hex::encode(Sha256::digest(bytes))
 }
 
 #[test]

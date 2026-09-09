@@ -50,9 +50,12 @@ Consumers migrate per docs/MIGRATION.md (ikigov first, then hardened-ai). First 
 
 Deferred to a follow-up (not blocking consumers, which vendor their own copies today): shipping `schemas/` + `vectors/` as importable package data, and the Rust Layer-0 implementation (v0.3.0, for treasury).
 
-## v0.3.0 (planned) — x402 binding + Rust Layer 0
+## v0.3.0 (in progress) — x402 binding + Rust Layer 0
 
-x402 imports the library at the screening pipeline boundary (gated on a founder decision); Rust crate implements Layer 0 for treasury's schema conformance.
+x402 imports the library at the screening pipeline boundary (**gated** on a founder decision on the x402 roadmap); Rust crate implements Layer 0 for treasury's schema conformance.
+
+- R1 **Rust Layer 0 — Delivered 2026-09-09.** `rust/src/lib.rs` ships `canonical_string` / `canonical_bytes` (strict profile: sorted keys, compact, UTF-8, floats rejected at any depth), `sha256_hex` / `content_hash`, and the signer-bound `signing_message`, plus a fail-closed `CanonicalError` (`FloatRejected` | `Serialize`). Extracted verbatim from `rust/tests/conformance.rs`, where the vectors had already pinned it byte-for-byte; the conformance suite now exercises the crate's public API and keeps only signing/verification test-local (no signature layer in the crate — ADR-0001 D1, treasury is keyless by design). Runtime dependencies: `serde_json` (explicitly **without** `preserve_order` — sorted keys are the contract) and `sha2`; hex encoding is inline, so `hex` stays a dev-dependency. Gate: `cargo fmt --check` OK, `cargo clippy --all-targets -- -D warnings` clean, `cargo test` 5 unit + 31 conformance passed, `cargo doc` warning-free; Python suite and vectors untouched (`--check` OK). Crate version NOT bumped (release mechanics are founder-signed); treasury can now take the crate for Layer-0 helpers per MIGRATION step 4.
+- R2 x402 binding — **blocked** (x402 roadmap); x402 conforms via `vectors/slo-reading/` until then.
 
 ## Provenance-parents convention (deliberated 2026-07-02, session: suite strategy)
 
