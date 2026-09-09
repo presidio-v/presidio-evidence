@@ -21,7 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@stable
+      # Action code is SHA-pinned; the Rust toolchain itself still tracks stable via rustup.
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch, 2026-09
+        with:
+          toolchain: stable
       - name: Format
         run: cargo fmt --manifest-path rust/Cargo.toml --check
       - name: Clippy (deny warnings)
