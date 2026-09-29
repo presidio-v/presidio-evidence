@@ -8,6 +8,19 @@ Zero wire-format change. The library reproduces today's bytes (proved by the gol
 
 ## 1. ikigov-assess (first — it ships the customer loop)
 
+> **Blocked while this library is private, recorded 2026-09-17.**
+> This library is `Private :: Do Not Upload` (ADR-0001 D6) while ikigov-assess
+> ships on PyPI. A public wheel cannot depend on a private package, so "add
+> presidio-evidence as dependency" below cannot ship before the library is public, whatever
+> the visibility decision's "the other consumers may use the private library now" permits in
+> principle. Until then ikigov conforms **by vectors only**: it keeps its local
+> canonicalisation/signing mirror and pins the family golden vectors
+> (`workshop-attestation`, `workshop-leavebehind`, and now the `evidence-ref-v2`
+> tier semantics it implements consumer-side — ikigov v0.26.0 T-B6 Decision 7). The
+> import swap is re-sequenced to *after* step 3's precondition clears, at which point
+> steps 1 and 3 can share one release train. Nothing in this section is otherwise
+> changed.
+
 What changes:
 - `src/presidio_ikigov_assess/evidence.py`: `_canonical`, `_hmac_hex`, `_verify_ed25519`, `verify_ref`, `load_trust_store` re-export from `presidio_evidence`; `EvidenceRef` dataclass imports the contract (consumer keeps its `VALID_ITEM_IDS` domain check — that is consumer-side by design).
 - Workshop leave-behind signing (`workshop.py`) moves onto library canonicalization + signing; `workshop-leavebehind@1` schema stays in ikigov (product-specific), only the crypto substrate is shared.
@@ -43,7 +56,7 @@ What changes:
 
 | Step | Repo | Precondition | Risk if skipped-ahead |
 |---|---|---|---|
-| 1 | ikigov-assess | library v0.2.0 | none — first mover |
+| 1 | ikigov-assess | **once this library is public** — public PyPI package cannot depend on this private library; vectors-only until then | packaging failure on every `pip install` |
 | 2 | hardened-ai | step 1 green one cycle | producer drift undetected by consumer |
 | 3 | x402 (+mcp) | a founder decision on the x402 roadmap; session-3 review | churn on a customer-shipped surface |
 | 4 | treasury | none (vectors exist now) | n/a — can run any time after v0.1.0 |

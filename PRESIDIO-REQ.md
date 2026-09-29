@@ -95,6 +95,35 @@ Requirements (gated on founder sign-off of ADR-0003):
 
 **Release gate (founder):** ADR-0003 signed/accepted by V.S. (2026-07-05); local remediation gate green on macOS (2026-07-05); any signed tag remains a founder release step.
 
+## Consumer posture note — ikigov import migration blocked by visibility (2026-09-17)
+
+Recorded during the CJ ↔ ikigov synergies session. `docs/MIGRATION.md` step 1
+assumed ikigov-assess could add this library as a dependency now (visibility decision:
+"the other consumers may use the private library now"). It cannot: ikigov
+ships on PyPI and this package is `Private :: Do Not Upload`, so the dependency
+would break every public install. Step 1 is re-sequenced to after the
+library goes public, alongside step 3; until then ikigov conforms
+by golden vectors only (it already pins `workshop-attestation` and
+`workshop-leavebehind`, and as of its v0.26.0 T-B6 implements the `evidence-ref@2`
+tier semantics of ADR-0003 consumer-side, honouring declared tiers only under `@2`
+and treating an `@1` extra tier as inert, exactly as
+`vectors/evidence-ref-v2/valid-v1-with-extra-tier` pins). No schema, vector or code
+change here; MIGRATION.md carries the amendment. **Founder gate unchanged:** any
+visibility change remains a founder-signed release step.
+
+Two follow-ons this session identified for the roadmap, neither started:
+
+- **`capability-grant@1` golden vector.** ikigov's governance-ceiling design (its
+  T-B6 Decision 6) derives an x402 capability grant from a `G3 OPEN` gate
+  certificate (`parents[0]` = certificate hash). It is blocked until the grant
+  format has a normative vector here, because the schema lives in x402 and a grant
+  that does not byte-match the x402 verifier must not be issued. Fits the 0.3.0
+  "x402 binding" line, and inherits its timing (the x402 roadmap).
+- **`gate-certificate@1` golden vector.** ikigov now emits `parents`, `not_after`,
+  `grounding` and `assurance_tier` in the certificate; a vector here would freeze
+  that shape the way `workshop-attestation` froze T-B4. Append-only, no envelope
+  change; can land any time.
+
 ## energy-reading@1 — reservation for the pat Energy Arc (2026-07-13, cross-repo)
 
 Cross-repo reservation requested by `presidio-hardened-arch-translucency` (its
