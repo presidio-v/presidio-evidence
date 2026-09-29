@@ -49,7 +49,7 @@ What changes:
 
 What changes:
 - **No Rust implementation dependency initially.** treasury adds a conformance test consuming `vectors/canonical-json/` (its float-rejecting canonicalizer must reproduce the vectors — it is the *origin* of the strict profile, so this is a regression pin, not a change).
-- Optionally later: depend on the `presidio-evidence` crate for Layer-0 helpers — **available since 2026-09-09** (`canonical_string`/`canonical_bytes`, `sha256_hex`/`content_hash`, `signing_message`; v0.3.0 scope, crate not yet version-bumped).
+- Optionally later: depend on the `presidio-evidence` crate for Layer-0 helpers — **available since 2026-09-09** (`canonical_string`/`canonical_bytes`, `sha256_hex`/`content_hash`, `signing_message`; released in v0.3.0, crate 0.2.0).
 - Explicit non-goal: no Ed25519, no trust store, no signature layer in treasury (ADR-0001 D1; its dual-control model is the security argument).
 
 ## Sequencing summary

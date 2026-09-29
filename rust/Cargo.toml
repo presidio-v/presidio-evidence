@@ -1,6 +1,6 @@
 [package]
 name = "presidio-evidence"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 description = "Shared evidence substrate for the presidio-hardened-* suite (Rust side). Schema and golden test vectors at the repo root are the contract; this crate conforms to them. Independent of Microsoft Presidio."
