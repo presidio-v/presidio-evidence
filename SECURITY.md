@@ -4,8 +4,9 @@
 
 | Version | Supported |
 |---|---|
-| 0.2.x | ✅ current |
-| 0.1.x | security fixes only while internal consumers finish migration |
+| 0.4.x | ✅ current |
+| 0.3.x | security fixes only while internal consumers move to 0.4 |
+| < 0.3 | not supported |
 
 ## Reporting a vulnerability
 

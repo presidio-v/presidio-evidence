@@ -5,8 +5,10 @@ From here on, changes are recorded in this file first.
 
 ## [Unreleased]
 
-Intended as v0.4.0 (minor, additive). Not tagged; the release is a founder step.
-ADR-0005 and ADR-0006 accepted by the founder on 2026-10-18.
+## [0.4.0] - 2026-10-18
+
+Minor, additive. ADR-0005 and ADR-0006 accepted by the founder on 2026-10-18.
+Rust crate stays at 0.2.0 (conformance tests only, no crate API change).
 
 ### Added
 - **ADR-0005 numeric payload encoding** (Accepted): non-integer numbers in
