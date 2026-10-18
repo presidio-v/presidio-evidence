@@ -95,7 +95,8 @@ is keyless by design, ADR-0001 D1).
 | 0.2.1 | Consumer vectors for ikigov, x402, and treasury | delivered |
 | 0.2.2 | ADR-0003 assurance-tier contract (`evidence-ref@2`) | delivered |
 | 0.3.0 | Rust Layer-0 implementation (crate 0.2.0, for treasury); ADR-0001 D3/D4 key helpers + `presidio-evidence` CLI; `energy-reading@1` | current |
-| 0.4.0 | x402 binding (gated on the x402 roadmap) | planned |
+| 0.4.0 | ADR-0005 numeric payload encoding; ADR-0006 gate-certificate identity; `training-run@1` and `gate-certificate@1` schemas + vectors | next |
+| 0.5.0 | x402 binding (gated on the x402 roadmap) | planned |
 
 Full deliberation: [PRESIDIO-REQ.md](PRESIDIO-REQ.md). Design rationale: [docs/adr/ADR-0001-evidence-substrate.md](docs/adr/ADR-0001-evidence-substrate.md). Migration order and details: [docs/MIGRATION.md](docs/MIGRATION.md).
 

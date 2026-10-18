@@ -1,9 +1,9 @@
 # ADR-0006: gate-certificate@1 identity and schema registration
 
-**Status:** Proposed — awaiting founder sign-off
+**Status:** Accepted
 **Date:** 2026-10-18
 **Deciders:** V.S. (founder, governing account)
-**Founder sign-off:** pending.
+**Founder sign-off:** Accepted by V.S. on 2026-10-18 (PR #46).
 **Source mandate:** provenance chain classify → gate → train (ADR-0002 adoption order); ikigov-assess `gate-certificate@1` (v0.23.0 T-B5, `certificate.py`); arch-translucency `training-run@1` (its ADR-0009). ADR-0004 is reserved for `evidence-ref@3` (issue #38).
 
 ## Context

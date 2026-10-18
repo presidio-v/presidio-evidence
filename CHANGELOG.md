@@ -6,17 +6,17 @@ From here on, changes are recorded in this file first.
 ## [Unreleased]
 
 Intended as v0.4.0 (minor, additive). Not tagged; the release is a founder step.
-ADR-0005 and ADR-0006 are Proposed and need founder sign-off before release.
+ADR-0005 and ADR-0006 accepted by the founder on 2026-10-18.
 
 ### Added
-- **ADR-0005 numeric payload encoding** (Proposed): non-integer numbers in
+- **ADR-0005 numeric payload encoding** (Accepted): non-integer numbers in
   signed payloads are decimal strings in plain notation, with a precision
   declared per field and half-even rounding at the producer. Reference
   functions `encode_decimal`, `is_decimal_string`, `decimal_pattern`,
   `UNBOUNDED_SENTINEL`; vectors under `vectors/numeric-encoding/`. The
   `training-run@1` and `energy-reading@1` energy fields keep their shipped
   form under the grandfather clause (N8). canonical-json@1 is unchanged.
-- **ADR-0006 gate-certificate@1 identity** (Proposed): a gate certificate's
+- **ADR-0006 gate-certificate@1 identity** (Accepted): a gate certificate's
   identity is sha256 over canonical-json@1 of the document minus `signature`,
   and a provenance parent that names a gate decision uses it. Reference
   functions `gate_certificate_identity`, `gate_certificate_signing_bytes`,

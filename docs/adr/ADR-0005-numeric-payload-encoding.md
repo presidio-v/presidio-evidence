@@ -1,9 +1,9 @@
 # ADR-0005: Numeric payload encoding — decimal strings in plain notation
 
-**Status:** Proposed — awaiting founder sign-off
+**Status:** Accepted
 **Date:** 2026-10-18
 **Deciders:** V.S. (founder, governing account)
-**Founder sign-off:** pending.
+**Founder sign-off:** Accepted by V.S. on 2026-10-18 (PR #46).
 **Source mandate:** suite numeric-encoding review 2026-10; canonical-json@1 float rejection (ADR-0001 D1); the energy fields of `training-run@1` and `energy-reading@1` (arch-translucency v0.23/v0.24). ADR-0004 is reserved for `evidence-ref@3` (issue #38).
 
 ## Context
