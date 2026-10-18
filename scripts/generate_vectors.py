@@ -991,7 +991,295 @@ def build() -> dict[pathlib.Path, dict]:
         "resolved_assurance_tier_for_v1_consumer": "attested",
     }
 
+    out.update(_numeric_encoding_vectors())
+    out.update(_gate_certificate_vectors(sk, pub, ATX_SIGNER, ASSESSOR_SIGNER))
+
     return out
+
+
+# ----------------------------------------------------------------------
+# (g) Numeric payload encoding (ADR-0005, Proposed). Non-integer numbers in
+# signed payloads are decimal strings in plain notation. The expected results
+# below are written out by hand, not computed by the library, so the vectors
+# judge the implementation rather than echo it.
+# ----------------------------------------------------------------------
+NUMERIC_PRECISION = 6
+
+
+def _numeric_encoding_vectors() -> dict[pathlib.Path, dict]:
+    p = NUMERIC_PRECISION
+
+    def case(name: str, value: object, valid: bool, reason: str, **extra: object) -> dict:
+        entry = {"name": name, "value": value, "precision": extra.pop("precision", p)}
+        entry.update(extra)
+        entry.update({"valid": valid, "reason": reason})
+        return entry
+
+    validate = [
+        case("small-fraction", "0.00001", True, "plain notation, 5 fractional digits <= 6"),
+        case("integral", "12", True, "integral value: no point, no fraction"),
+        case("zero", "0", True, "the one spelling of zero"),
+        case("negative-fraction", "-12.5", True, "leading '-' allowed"),
+        case("negative-below-one", "-0.5", True, "one digit '0' before the point"),
+        case("at-precision", "3.141593", True, "6 fractional digits == precision"),
+        case("precision-zero-integral", "42", True, "precision 0 admits integers", precision=0),
+        case(
+            "sentinel-declared",
+            "unbounded",
+            True,
+            "schema-declared sentinel (ADR-0005)",
+            sentinels=["unbounded"],
+        ),
+        case("exponent-lower", "1e-05", False, "exponent notation (Python repr of 1e-05)"),
+        case("exponent-upper", "1E+16", False, "exponent notation"),
+        case("trailing-zero", "12.0", False, "trailing zero (the one spelling is 12)"),
+        case("trailing-zeros-fraction", "0.50", False, "trailing zero in the fraction"),
+        case("trailing-point", "5.", False, "trailing decimal point"),
+        case("no-leading-digit", ".5", False, "at least one digit before the point"),
+        case("leading-zero", "01.5", False, "leading zero before a non-zero integer part"),
+        case("plus-sign", "+1", False, "only '-' is allowed as a sign"),
+        case(
+            "negative-zero",
+            "-0",
+            False,
+            "negative zero is not a canonical spelling; zero is '0' (ADR-0005 defines this)",
+        ),
+        case("negative-zero-fraction", "-0.0", False, "negative zero with a trailing zero"),
+        case("bare-minus", "-", False, "no digits"),
+        case("empty", "", False, "no digits"),
+        case("nan", "NaN", False, "NaN is rejected"),
+        case("infinity", "Infinity", False, "Infinity is rejected; use a declared sentinel"),
+        case("neg-infinity", "-Infinity", False, "-Infinity is rejected"),
+        case("inf-short", "inf", False, "IEEE special spelling is not a number"),
+        case(
+            "sentinel-undeclared",
+            "unbounded",
+            False,
+            "a sentinel is admitted only where the schema declares it",
+        ),
+        case("too-precise", "0.0000001", False, "7 fractional digits > precision 6"),
+        case(
+            "precision-zero-fraction", "0.5", False, "precision 0 admits no fraction", precision=0
+        ),
+        case("comma-separator", "1,5", False, "only '.' separates the fraction"),
+        case("leading-space", " 1", False, "no surrounding whitespace"),
+        case("trailing-newline", "1\n", False, "no surrounding whitespace"),
+        case("fullwidth-digit", "１", False, "ASCII digits only"),
+        case("json-number", 12, False, "a decimal field is a JSON string, never a number"),
+        case(
+            "grandfathered-ieee-repr",
+            "840.0",
+            False,
+            "the shortest-round-trip IEEE form of training-run@1 energy_wh; valid only in the "
+            "grandfathered fields named in ADR-0005, never in a new field",
+        ),
+        case("over-length", "1" * 513, False, "longer than the 512-char family string bound"),
+    ]
+    encode = [
+        {"input": "0.00001", "precision": 6, "expected": "0.00001"},
+        {"input": "1e-05", "precision": 6, "expected": "0.00001"},
+        {"input": "12.0", "precision": 6, "expected": "12"},
+        {"input": 12, "precision": 2, "expected": "12"},
+        {"input": "840.0", "precision": 2, "expected": "840"},
+        {"input": "0.125", "precision": 2, "expected": "0.12"},
+        {"input": "0.135", "precision": 2, "expected": "0.14"},
+        {"input": "2.5", "precision": 0, "expected": "2"},
+        {"input": "3.5", "precision": 0, "expected": "4"},
+        {"input": "-1.005", "precision": 2, "expected": "-1"},
+        {"input": "-0.001", "precision": 2, "expected": "0"},
+        {"input": "-0", "precision": 6, "expected": "0"},
+        {"input": "1e-7", "precision": 6, "expected": "0"},
+        {"input": "1E+3", "precision": 6, "expected": "1000"},
+        {"input": "123456789.987654321", "precision": 6, "expected": "123456789.987654"},
+        {"input": "0.0000005", "precision": 6, "expected": "0"},
+        {"input": "0.0000015", "precision": 6, "expected": "0.000002"},
+    ]
+    encode_rejected = [
+        {"input": "NaN", "reason": "NaN is rejected at the producer"},
+        {"input": "Infinity", "reason": "Infinity is rejected; use a declared sentinel"},
+        {"input": "-Infinity", "reason": "-Infinity is rejected"},
+        {"input": "sNaN", "reason": "signalling NaN is rejected"},
+        {"input": "twelve", "reason": "not a number"},
+    ]
+    return {
+        V / "numeric-encoding/vectors.json": {
+            "description": (
+                "ADR-0005 numeric payload encoding. Non-integer numeric values in signed "
+                "payloads are decimal strings in plain notation: no exponent, no trailing "
+                "zeros, no trailing point, optional leading '-', at least one ASCII digit "
+                "before the point, no leading zeros, no negative zero. Each schema declares "
+                "a precision per field (maximum fractional digits); producers round "
+                "half-even to it before encoding. 'validate' cases are verifier-side: a "
+                "byte-wise grammar check, never a float parse. 'encode' cases are "
+                "producer-side: input -> canonical string. 'encode_rejected' inputs must "
+                "fail at the producer. canonical-json@1 is unchanged."
+            ),
+            "grammar": "-?(0|[1-9][0-9]*)(\\.[0-9]*[1-9])?, excluding '-0'",
+            "max_length": 512,
+            "recommended_unbounded_sentinel": "unbounded",
+            "validate": validate,
+            "encode": encode,
+            "encode_rejected": encode_rejected,
+        }
+    }
+
+
+# ----------------------------------------------------------------------
+# (h) gate-certificate@1 identity (ADR-0006, Proposed). A sample certificate as
+# presidio-hardened-ikigov-assess build_certificate() + sign() emit it, signed
+# with the family test key. Its identity is sha256 over canonical-json@1 of the
+# document minus `signature` -- the bytes the issuer signs. A second vector is a
+# training-run@1 reading whose parents[0] is that identity: the ADR-0002 edge
+# from a training run to the gate decision that admitted it.
+#
+# Cross-checked at creation (2026-10-18) against ikigov-assess v0.28.0:
+# build_certificate() with these inputs yields this document minus `signature`
+# byte for byte, sha256(certificate.signing_bytes(doc)) equals the identity,
+# and verify_certificate(doc, trust, now=2026-07-03) returns ok.
+# ----------------------------------------------------------------------
+#: ikigov-assess v0.28.0 gate_predicate_content_hash(). Opaque here: ikigov
+#: hashes float risk weights with a non-strict canonicaliser, so this repo cannot
+#: recompute it (open point in ADR-0005/ADR-0006).
+IKIGOV_PREDICATE_HASH = "c359f71130ecdfc34e7b90e835ad02453360721ef330f3479868f5dd7b9773ef"
+
+
+def _gate_certificate_vectors(
+    sk: ed25519.Ed25519PrivateKey, pub: str, atx_signer: str, issuer: str
+) -> dict[pathlib.Path, dict]:
+    ref_signer = "presidio-hardened-ai"
+    gate_items = ["S1", "S2", "S3"]
+    affirmation_set = []
+    for seq, item_id in enumerate(gate_items, start=1):
+        content = {"item_id": item_id, "artefact": f"golden-{item_id.lower()}"}
+        ch = hashlib.sha256(cb(content)).hexdigest()
+        affirmation_set.append(
+            {
+                "id": item_id,
+                "status": "affirmed",
+                "evidence_ref": {
+                    "content_hash": ch,
+                    "signer": ref_signer,
+                    "signature": sk.sign(cb({"content_hash": ch, "signer": ref_signer})).hex(),
+                    "claimed_at": "2026-07-02T00:00:00+00:00",
+                    "item_id": item_id,
+                    "source": ref_signer,
+                    "source_version": "0.30.0",
+                    "ledger_ref": f"pai-ledger:seq/{seq}",
+                    "assurance_tier": "attested",
+                },
+            }
+        )
+    classification_parent = "b" * 64  # placeholder eai-classification@1 payload hash
+    unsigned = {
+        "schema": "presidio-hardened/gate-certificate@1",
+        "use_case": "golden-training-gate",
+        "framework_content_hash": IKIGOV_PREDICATE_HASH,
+        "gate": "G0",
+        "risk_class": "medium",
+        "decision": "OPEN",
+        "assurance_tier": "attested",
+        "grounding": "evidence-verified",
+        "affirmation_set": affirmation_set,
+        "predicate": {
+            "gate_items": gate_items,
+            "risk_class": "medium",
+            "strict": False,
+            "strict_effective": False,
+            "predicate_content_hash": IKIGOV_PREDICATE_HASH,
+        },
+        "assessed_at": "2026-07-02T00:00:00Z",
+        "issuer": issuer,
+        "parents": [classification_parent],
+        "not_after": "2027-07-02T00:00:00Z",
+        "require_evidence": True,
+    }
+    signing_bytes = cb(unsigned)
+    identity = hashlib.sha256(signing_bytes).hexdigest()
+    certificate = dict(
+        unsigned,
+        signature={"alg": "ed25519", "signer": issuer, "sig": sk.sign(signing_bytes).hex()},
+    )
+    trust = {
+        issuer: {"alg": "ed25519", "public_key": pub},
+        ref_signer: {"alg": "ed25519", "public_key": pub},
+    }
+
+    run_content = {
+        "run_id": "golden-gated-run",
+        "strategy": "pipeline",
+        "degree": 4,
+        "samples_per_second": 250,
+        "duration_s": 7200,
+        "device_count": 4,
+        "parents": [identity],
+    }
+    run_ch = hashlib.sha256(cb(run_content)).hexdigest()
+    run_ref = {
+        "item_id": "training-run/golden-gated-run",
+        "source": atx_signer,
+        "source_version": "test",
+        "ledger_ref": "atx-ledger:seq/2",
+        "content_hash": run_ch,
+        "signer": atx_signer,
+        "signature": sk.sign(cb({"content_hash": run_ch, "signer": atx_signer})).hex(),
+        "claimed_at": "2026-07-02T00:00:00+00:00",
+    }
+    return {
+        V / "gate-certificate/valid-certificate.json": certificate,
+        V / "gate-certificate/valid-certificate.notes.json": {
+            "description": (
+                "Companion to gate-certificate/valid-certificate.json (ADR-0006). A "
+                "presidio-hardened/gate-certificate@1 as ikigov-assess emits it: gate G0, "
+                "all three items affirmed by Ed25519-signed evidence-refs, issuer-signed "
+                "with the family test key (priv 01*32). identity = sha256(canonical-json@1 "
+                "(document minus `signature`)) -- exactly the bytes the issuer signs "
+                "(ikigov certificate.signing_bytes). A provenance parent that refers to "
+                "this gate decision carries `identity`, not framework_content_hash: the "
+                "predicate hash names the rule, the identity names the issuance. "
+                "framework_content_hash is ikigov's value, opaque here. parents[0] is a "
+                "placeholder eai-classification@1 hash. Cross-checked at creation against "
+                "ikigov-assess v0.28.0 build_certificate/signing_bytes/verify_certificate."
+            ),
+            "signing_bytes_canonical": signing_bytes.decode("utf-8"),
+            "identity": identity,
+            "identity_excludes_signature": True,
+            "predicate_content_hash": IKIGOV_PREDICATE_HASH,
+            "verify_at": "2026-07-03T00:00:00Z",
+            "cross_checked_against": "presidio-hardened-ikigov-assess v0.28.0",
+            "trust_store": trust,
+        },
+        V / "gate-certificate/child-training-run.json": {
+            "schema": "presidio-hardened/evidence-ref@1",
+            "use_case": "training-run-provenance",
+            "source": atx_signer,
+            "source_version": "test",
+            "generated_at": "2026-07-02T00:00:00+00:00",
+            "evidence": [run_ref],
+        },
+        V / "gate-certificate/child-training-run.notes.json": {
+            "description": (
+                "A presidio-hardened/training-run@1 reading whose parents[0] is the "
+                "identity of gate-certificate/valid-certificate.json: the ADR-0002 edge "
+                "from a training run to the gate decision that admitted it (ADR-0006). "
+                "The producer does not resolve the parent (ADR-0002 P4); it MAY verify "
+                "the certificate before adding its identity."
+            ),
+            "layer0_reading": {
+                "schema": "presidio-hardened/training-run@1",
+                "attested_content": run_content,
+                "content_hash": run_ch,
+                "source": atx_signer,
+                "source_version": "test",
+                "generated_at": "2026-07-02T00:00:00+00:00",
+            },
+            "signed_content": run_content,
+            "expected_content_hash": run_ch,
+            "parent_certificate_identity": identity,
+            "parent_vector": "vectors/gate-certificate/valid-certificate.json",
+            "verifies_with_public_key_hex": pub,
+            "trust_store": {atx_signer: {"alg": "ed25519", "public_key": pub}},
+        },
+    }
 
 
 def render(obj: dict) -> str:

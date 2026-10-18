@@ -16,6 +16,11 @@ consumers migrate onto (ADR-0001 action item 5, Q4 extraction):
   :func:`load_private_key` (``0600`` file or env var; never logged),
   :func:`write_private_key`. The ``presidio-evidence`` CLI (D4) exposes
   ``verify`` (exit 0/1) and ``keygen``.
+* Numeric payload encoding (ADR-0005) — :func:`encode_decimal` (producer,
+  half-even to a declared precision), :func:`is_decimal_string` (verifier,
+  never parses to float), :func:`decimal_pattern` (JSON Schema pattern).
+* Gate-certificate identity (ADR-0006) — :func:`gate_certificate_identity`,
+  :func:`gate_certificate_signing_bytes`.
 
 Ed25519 needs the optional ``cryptography`` dependency (``[crypto]`` extra);
 HMAC-SHA256 and Layer 0 are pure stdlib. The wire format is unchanged from
@@ -38,11 +43,23 @@ from ._constants import (
     TRUST_STORE_SCHEMA_ID,
 )
 from ._errors import EvidenceError
+from ._gate_certificate import (
+    GATE_CERTIFICATE_SCHEMA_ID,
+    gate_certificate_identity,
+    gate_certificate_signing_bytes,
+)
 from ._keys import (
     generate_ed25519_keypair,
     load_private_key,
     public_key_hex,
     write_private_key,
+)
+from ._numeric import (
+    DECIMAL_STRING_MAX_LEN,
+    UNBOUNDED_SENTINEL,
+    decimal_pattern,
+    encode_decimal,
+    is_decimal_string,
 )
 from ._refs import (
     EvidenceRef,
@@ -100,4 +117,14 @@ __all__ = [
     "public_key_hex",
     "load_private_key",
     "write_private_key",
+    # numeric payload encoding (ADR-0005)
+    "DECIMAL_STRING_MAX_LEN",
+    "UNBOUNDED_SENTINEL",
+    "decimal_pattern",
+    "encode_decimal",
+    "is_decimal_string",
+    # gate-certificate identity (ADR-0006)
+    "GATE_CERTIFICATE_SCHEMA_ID",
+    "gate_certificate_identity",
+    "gate_certificate_signing_bytes",
 ]

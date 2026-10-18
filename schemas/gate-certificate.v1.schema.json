@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://presidio-group.eu/schemas/gate-certificate.v1.schema.json",
+  "title": "presidio-hardened/gate-certificate@1",
+  "description": "Signed gate certificate issued by presidio-hardened-ikigov-assess (certificate.py, v0.23.0 onward). Registered after the fact (ADR-0006) from the shipped issuer and vectors/gate-certificate/; it describes what is already on the wire and changes none of it. Signing: the issuer signs canonical-json@1 bytes of the document with the top-level 'signature' field removed (ikigov signing_bytes). Identity (ADR-0006): content_hash = sha256 of exactly those bytes. A provenance parent (ADR-0002) that refers to a gate decision carries this identity; framework_content_hash / predicate.predicate_content_hash identify the rule, not the issuance. assurance_tier, grounding, parents, not_after and require_evidence are optional additions made within @1 (ADR-0001 D5); 'parents' is omitted when empty (ADR-0002 P3). Semantic checks (decision recomputation, predicate identity, embedded-ref verification, the one-ref-one-item rule, issuer == signature.signer) are verifier-side and not expressible here. No additionalProperties:false, matching the family posture (ADR-0003 extra-field finding).",
+  "type": "object",
+  "properties": {
+    "schema": { "const": "presidio-hardened/gate-certificate@1" },
+    "use_case": { "$ref": "#/$defs/boundedString" },
+    "framework_content_hash": { "$ref": "#/$defs/lowercaseHex" },
+    "gate": { "type": "string", "pattern": "^G[0-9]+$" },
+    "risk_class": { "$ref": "#/$defs/riskClass" },
+    "decision": { "enum": ["OPEN", "PARTIAL", "BLOCKED"] },
+    "assurance_tier": {
+      "const": "attested",
+      "description": "The tier at which the certificate itself verifies. Absent means attested; any other value is rejected by the verifier."
+    },
+    "grounding": { "enum": ["self", "evidence-verified"] },
+    "affirmation_set": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/affirmation" }
+    },
+    "predicate": { "$ref": "#/$defs/predicate" },
+    "assessed_at": { "$ref": "#/$defs/boundedString" },
+    "issuer": { "$ref": "#/$defs/boundedString" },
+    "parents": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/lowercaseHex" },
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true
+    },
+    "not_after": { "$ref": "#/$defs/utcInstant" },
+    "require_evidence": { "type": "boolean" },
+    "signature": { "$ref": "#/$defs/issuerSignature" }
+  },
+  "required": [
+    "schema",
+    "use_case",
+    "framework_content_hash",
+    "gate",
+    "risk_class",
+    "decision",
+    "affirmation_set",
+    "predicate",
+    "assessed_at",
+    "issuer",
+    "signature"
+  ],
+  "$defs": {
+    "boundedString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000]*$"
+    },
+    "lowercaseHex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8,128}$"
+    },
+    "utcInstant": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "riskClass": { "enum": ["low", "medium", "high"] },
+    "affirmation": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/boundedString" },
+        "status": { "enum": ["affirmed", "skipped", "denied"] },
+        "evidence_ref": { "$ref": "#/$defs/embeddedRef" }
+      },
+      "required": ["id", "status"]
+    },
+    "embeddedRef": {
+      "description": "An evidence-ref embedded verbatim: the eight evidence-ref@1 fields plus the declared assurance_tier (evidence-ref@2, ADR-0003).",
+      "type": "object",
+      "properties": {
+        "item_id": { "$ref": "#/$defs/boundedString" },
+        "source": { "$ref": "#/$defs/boundedString" },
+        "source_version": { "$ref": "#/$defs/boundedString" },
+        "ledger_ref": { "$ref": "#/$defs/boundedString" },
+        "content_hash": { "$ref": "#/$defs/lowercaseHex" },
+        "signer": { "$ref": "#/$defs/boundedString" },
+        "signature": { "$ref": "#/$defs/lowercaseHex" },
+        "claimed_at": { "$ref": "#/$defs/boundedString" },
+        "assurance_tier": { "enum": ["attested", "optimistic", "zk"] }
+      },
+      "required": [
+        "item_id",
+        "source",
+        "source_version",
+        "ledger_ref",
+        "content_hash",
+        "signer",
+        "signature",
+        "claimed_at"
+      ]
+    },
+    "predicate": {
+      "type": "object",
+      "properties": {
+        "gate_items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/boundedString" }
+        },
+        "risk_class": { "$ref": "#/$defs/riskClass" },
+        "strict": { "type": "boolean" },
+        "strict_effective": { "type": "boolean" },
+        "predicate_content_hash": { "$ref": "#/$defs/lowercaseHex" }
+      },
+      "required": ["gate_items", "risk_class", "strict", "strict_effective", "predicate_content_hash"]
+    },
+    "issuerSignature": {
+      "type": "object",
+      "properties": {
+        "alg": { "enum": ["ed25519", "hmac-sha256"] },
+        "signer": { "$ref": "#/$defs/boundedString" },
+        "sig": { "$ref": "#/$defs/lowercaseHex" }
+      },
+      "required": ["alg", "signer", "sig"]
+    }
+  }
+}

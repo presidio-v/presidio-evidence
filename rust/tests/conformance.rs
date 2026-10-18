@@ -905,3 +905,156 @@ fn training_run_energy_fields_are_additive_over_the_no_energy_vector() {
         energy["no_energy_content_hash"].as_str().unwrap()
     );
 }
+
+// ── ADR-0005: numeric payload encoding ──────────────────────────────────────
+
+/// Reference verifier-side check for an ADR-0005 decimal string. Walks the
+/// bytes; never parses to a float. `-0` is excluded, as is any fraction longer
+/// than `precision`.
+fn is_decimal_string(value: &Value, precision: u64, sentinels: &[&str]) -> bool {
+    let Some(s) = value.as_str() else {
+        return false;
+    };
+    if s.chars().count() > 512 {
+        return false;
+    }
+    if sentinels.contains(&s) {
+        return true;
+    }
+    if s == "-0" {
+        return false;
+    }
+    let body = s.strip_prefix('-').unwrap_or(s);
+    let (int_part, frac_part) = match body.split_once('.') {
+        Some((i, f)) => (i, Some(f)),
+        None => (body, None),
+    };
+    let int_ok = int_part == "0"
+        || (!int_part.is_empty()
+            && int_part.bytes().all(|b| b.is_ascii_digit())
+            && !int_part.starts_with('0'));
+    if !int_ok {
+        return false;
+    }
+    match frac_part {
+        None => true,
+        Some(f) => {
+            !f.is_empty()
+                && f.bytes().all(|b| b.is_ascii_digit())
+                && !f.ends_with('0')
+                && (f.len() as u64) <= precision
+        }
+    }
+}
+
+#[test]
+fn numeric_encoding_validate_vectors() {
+    let doc = load("vectors/numeric-encoding/vectors.json");
+    for case in doc["validate"].as_array().unwrap() {
+        let name = case["name"].as_str().unwrap();
+        let sentinels: Vec<&str> = case["sentinels"]
+            .as_array()
+            .map(|a| a.iter().map(|v| v.as_str().unwrap()).collect())
+            .unwrap_or_default();
+        let got = is_decimal_string(
+            &case["value"],
+            case["precision"].as_u64().unwrap(),
+            &sentinels,
+        );
+        assert_eq!(got, case["valid"].as_bool().unwrap(), "case {name}");
+    }
+    // Every producer-side expected output is itself a valid decimal string.
+    for case in doc["encode"].as_array().unwrap() {
+        assert!(
+            is_decimal_string(&case["expected"], case["precision"].as_u64().unwrap(), &[]),
+            "encode expected {}",
+            case["expected"]
+        );
+    }
+}
+
+// ── ADR-0006: gate-certificate@1 identity ───────────────────────────────────
+
+fn certificate_signing_bytes(doc: &Value) -> Vec<u8> {
+    let mut stripped = doc.as_object().unwrap().clone();
+    stripped.remove("signature");
+    presidio_evidence::canonical_bytes(&Value::Object(stripped)).unwrap()
+}
+
+#[test]
+fn gate_certificate_identity_reproduces() {
+    let cert = load("vectors/gate-certificate/valid-certificate.json");
+    let notes = load("vectors/gate-certificate/valid-certificate.notes.json");
+    assert_eq!(cert["schema"], "presidio-hardened/gate-certificate@1");
+    let signed = certificate_signing_bytes(&cert);
+    assert_eq!(
+        String::from_utf8(signed.clone()).unwrap(),
+        notes["signing_bytes_canonical"].as_str().unwrap()
+    );
+    assert_eq!(sha256_hex(&signed), notes["identity"].as_str().unwrap());
+    assert_eq!(
+        notes["identity"].as_str().unwrap(),
+        "dbb7c6a36f0aea55bbe5dead3daf8f4f3d59116966e79bd4b78ecfe2a83ebd4a"
+    );
+
+    // The issuer signature covers exactly the identity bytes.
+    let sig_block = &cert["signature"];
+    let signer = sig_block["signer"].as_str().unwrap();
+    assert_eq!(cert["issuer"].as_str().unwrap(), signer);
+    let pk_hex = notes["trust_store"][signer]["public_key"].as_str().unwrap();
+    let pk_bytes: [u8; 32] = hex::decode(pk_hex).unwrap().try_into().unwrap();
+    let pk = VerifyingKey::from_bytes(&pk_bytes).unwrap();
+    let sig_bytes: [u8; 64] = hex::decode(sig_block["sig"].as_str().unwrap())
+        .unwrap()
+        .try_into()
+        .unwrap();
+    pk.verify(&signed, &Signature::from_bytes(&sig_bytes))
+        .expect("issuer signature must verify over the identity bytes");
+
+    // Embedded refs verify under the family {content_hash, signer} message.
+    for entry in cert["affirmation_set"].as_array().unwrap() {
+        let r = &entry["evidence_ref"];
+        assert_eq!(r["item_id"], entry["id"]);
+        let ref_signer = r["signer"].as_str().unwrap();
+        assert!(verify_ed25519(
+            r["content_hash"].as_str().unwrap(),
+            ref_signer,
+            r["signature"].as_str().unwrap(),
+            notes["trust_store"][ref_signer]["public_key"]
+                .as_str()
+                .unwrap(),
+        ));
+    }
+}
+
+#[test]
+fn gate_certificate_identity_ignores_the_signature_only() {
+    let cert = load("vectors/gate-certificate/valid-certificate.json");
+    let identity = sha256_hex(&certificate_signing_bytes(&cert));
+    let mut resigned = cert.clone();
+    resigned["signature"]["sig"] = Value::String("00".repeat(64));
+    assert_eq!(sha256_hex(&certificate_signing_bytes(&resigned)), identity);
+    let mut other = cert.clone();
+    other["decision"] = Value::String("BLOCKED".into());
+    assert_ne!(sha256_hex(&certificate_signing_bytes(&other)), identity);
+}
+
+#[test]
+fn training_run_parent_is_the_certificate_identity() {
+    let cert = load("vectors/gate-certificate/valid-certificate.json");
+    let identity = sha256_hex(&certificate_signing_bytes(&cert));
+    let envelope = load("vectors/gate-certificate/child-training-run.json");
+    let notes = load("vectors/gate-certificate/child-training-run.notes.json");
+    let content = &notes["signed_content"];
+    assert_eq!(content["parents"][0].as_str().unwrap(), identity);
+    let ch = presidio_evidence::content_hash(content).unwrap();
+    let r = &envelope["evidence"][0];
+    assert_eq!(r["content_hash"].as_str().unwrap(), ch);
+    let signer = r["signer"].as_str().unwrap();
+    assert!(verify_ed25519(
+        &ch,
+        signer,
+        r["signature"].as_str().unwrap(),
+        notes["trust_store"][signer]["public_key"].as_str().unwrap(),
+    ));
+}

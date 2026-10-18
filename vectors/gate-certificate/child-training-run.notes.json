@@ -1,0 +1,42 @@
+{
+  "description": "A presidio-hardened/training-run@1 reading whose parents[0] is the identity of gate-certificate/valid-certificate.json: the ADR-0002 edge from a training run to the gate decision that admitted it (ADR-0006). The producer does not resolve the parent (ADR-0002 P4); it MAY verify the certificate before adding its identity.",
+  "layer0_reading": {
+    "schema": "presidio-hardened/training-run@1",
+    "attested_content": {
+      "run_id": "golden-gated-run",
+      "strategy": "pipeline",
+      "degree": 4,
+      "samples_per_second": 250,
+      "duration_s": 7200,
+      "device_count": 4,
+      "parents": [
+        "dbb7c6a36f0aea55bbe5dead3daf8f4f3d59116966e79bd4b78ecfe2a83ebd4a"
+      ]
+    },
+    "content_hash": "c5f99c9f5bf754eea0168d18523c1dd24a4eff601947edfdfbace5c2e66c6b20",
+    "source": "presidio-hardened-arch-translucency",
+    "source_version": "test",
+    "generated_at": "2026-07-02T00:00:00+00:00"
+  },
+  "signed_content": {
+    "run_id": "golden-gated-run",
+    "strategy": "pipeline",
+    "degree": 4,
+    "samples_per_second": 250,
+    "duration_s": 7200,
+    "device_count": 4,
+    "parents": [
+      "dbb7c6a36f0aea55bbe5dead3daf8f4f3d59116966e79bd4b78ecfe2a83ebd4a"
+    ]
+  },
+  "expected_content_hash": "c5f99c9f5bf754eea0168d18523c1dd24a4eff601947edfdfbace5c2e66c6b20",
+  "parent_certificate_identity": "dbb7c6a36f0aea55bbe5dead3daf8f4f3d59116966e79bd4b78ecfe2a83ebd4a",
+  "parent_vector": "vectors/gate-certificate/valid-certificate.json",
+  "verifies_with_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "trust_store": {
+    "presidio-hardened-arch-translucency": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  }
+}

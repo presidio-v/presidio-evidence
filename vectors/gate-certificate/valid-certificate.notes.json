@@ -1,0 +1,19 @@
+{
+  "description": "Companion to gate-certificate/valid-certificate.json (ADR-0006). A presidio-hardened/gate-certificate@1 as ikigov-assess emits it: gate G0, all three items affirmed by Ed25519-signed evidence-refs, issuer-signed with the family test key (priv 01*32). identity = sha256(canonical-json@1 (document minus `signature`)) -- exactly the bytes the issuer signs (ikigov certificate.signing_bytes). A provenance parent that refers to this gate decision carries `identity`, not framework_content_hash: the predicate hash names the rule, the identity names the issuance. framework_content_hash is ikigov's value, opaque here. parents[0] is a placeholder eai-classification@1 hash. Cross-checked at creation against ikigov-assess v0.28.0 build_certificate/signing_bytes/verify_certificate.",
+  "signing_bytes_canonical": "{\"affirmation_set\":[{\"evidence_ref\":{\"assurance_tier\":\"attested\",\"claimed_at\":\"2026-07-02T00:00:00+00:00\",\"content_hash\":\"479a9c979fe8793eca6ba2b2b14f65712adb943482bb388ac60041cf17d34c15\",\"item_id\":\"S1\",\"ledger_ref\":\"pai-ledger:seq/1\",\"signature\":\"2a5f24fad44ccf62b09d79c1ff70eaf3b134725832bcc3b21dc4e79c62455bc8b9614c72956c4f07bb07252cf698d48b32f1bfff54268e97745bd965f011d30d\",\"signer\":\"presidio-hardened-ai\",\"source\":\"presidio-hardened-ai\",\"source_version\":\"0.30.0\"},\"id\":\"S1\",\"status\":\"affirmed\"},{\"evidence_ref\":{\"assurance_tier\":\"attested\",\"claimed_at\":\"2026-07-02T00:00:00+00:00\",\"content_hash\":\"f6aff0b05417edfa74f8bf9e538324346aeed0d474f62136a584490e0d0daf11\",\"item_id\":\"S2\",\"ledger_ref\":\"pai-ledger:seq/2\",\"signature\":\"a156f6db87e9f3bb42325402f5238bf5a51feb82d0503711232097825ef831777d0d98a53d12593c50140e31a15303bb2108334c60bdaebddac2a7d5e887c40e\",\"signer\":\"presidio-hardened-ai\",\"source\":\"presidio-hardened-ai\",\"source_version\":\"0.30.0\"},\"id\":\"S2\",\"status\":\"affirmed\"},{\"evidence_ref\":{\"assurance_tier\":\"attested\",\"claimed_at\":\"2026-07-02T00:00:00+00:00\",\"content_hash\":\"634dbe739054d1c0e596c5b296919f2efd62e07102c16a2c12da59120fa5ab71\",\"item_id\":\"S3\",\"ledger_ref\":\"pai-ledger:seq/3\",\"signature\":\"797656c6dccb7c13a512c72f389979fb124b34c4098640110a2b56466a44494b429fa7b951a8d1416037c2a10a4b2cbb78138c7e65e91d6ff4359f69fd06f908\",\"signer\":\"presidio-hardened-ai\",\"source\":\"presidio-hardened-ai\",\"source_version\":\"0.30.0\"},\"id\":\"S3\",\"status\":\"affirmed\"}],\"assessed_at\":\"2026-07-02T00:00:00Z\",\"assurance_tier\":\"attested\",\"decision\":\"OPEN\",\"framework_content_hash\":\"c359f71130ecdfc34e7b90e835ad02453360721ef330f3479868f5dd7b9773ef\",\"gate\":\"G0\",\"grounding\":\"evidence-verified\",\"issuer\":\"presidio-hardened-ikigov-assess\",\"not_after\":\"2027-07-02T00:00:00Z\",\"parents\":[\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"],\"predicate\":{\"gate_items\":[\"S1\",\"S2\",\"S3\"],\"predicate_content_hash\":\"c359f71130ecdfc34e7b90e835ad02453360721ef330f3479868f5dd7b9773ef\",\"risk_class\":\"medium\",\"strict\":false,\"strict_effective\":false},\"require_evidence\":true,\"risk_class\":\"medium\",\"schema\":\"presidio-hardened/gate-certificate@1\",\"use_case\":\"golden-training-gate\"}",
+  "identity": "dbb7c6a36f0aea55bbe5dead3daf8f4f3d59116966e79bd4b78ecfe2a83ebd4a",
+  "identity_excludes_signature": true,
+  "predicate_content_hash": "c359f71130ecdfc34e7b90e835ad02453360721ef330f3479868f5dd7b9773ef",
+  "verify_at": "2026-07-03T00:00:00Z",
+  "cross_checked_against": "presidio-hardened-ikigov-assess v0.28.0",
+  "trust_store": {
+    "presidio-hardened-ikigov-assess": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    },
+    "presidio-hardened-ai": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  }
+}

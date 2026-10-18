@@ -1,0 +1,358 @@
+{
+  "description": "ADR-0005 numeric payload encoding. Non-integer numeric values in signed payloads are decimal strings in plain notation: no exponent, no trailing zeros, no trailing point, optional leading '-', at least one ASCII digit before the point, no leading zeros, no negative zero. Each schema declares a precision per field (maximum fractional digits); producers round half-even to it before encoding. 'validate' cases are verifier-side: a byte-wise grammar check, never a float parse. 'encode' cases are producer-side: input -> canonical string. 'encode_rejected' inputs must fail at the producer. canonical-json@1 is unchanged.",
+  "grammar": "-?(0|[1-9][0-9]*)(\\.[0-9]*[1-9])?, excluding '-0'",
+  "max_length": 512,
+  "recommended_unbounded_sentinel": "unbounded",
+  "validate": [
+    {
+      "name": "small-fraction",
+      "value": "0.00001",
+      "precision": 6,
+      "valid": true,
+      "reason": "plain notation, 5 fractional digits <= 6"
+    },
+    {
+      "name": "integral",
+      "value": "12",
+      "precision": 6,
+      "valid": true,
+      "reason": "integral value: no point, no fraction"
+    },
+    {
+      "name": "zero",
+      "value": "0",
+      "precision": 6,
+      "valid": true,
+      "reason": "the one spelling of zero"
+    },
+    {
+      "name": "negative-fraction",
+      "value": "-12.5",
+      "precision": 6,
+      "valid": true,
+      "reason": "leading '-' allowed"
+    },
+    {
+      "name": "negative-below-one",
+      "value": "-0.5",
+      "precision": 6,
+      "valid": true,
+      "reason": "one digit '0' before the point"
+    },
+    {
+      "name": "at-precision",
+      "value": "3.141593",
+      "precision": 6,
+      "valid": true,
+      "reason": "6 fractional digits == precision"
+    },
+    {
+      "name": "precision-zero-integral",
+      "value": "42",
+      "precision": 0,
+      "valid": true,
+      "reason": "precision 0 admits integers"
+    },
+    {
+      "name": "sentinel-declared",
+      "value": "unbounded",
+      "precision": 6,
+      "sentinels": [
+        "unbounded"
+      ],
+      "valid": true,
+      "reason": "schema-declared sentinel (ADR-0005)"
+    },
+    {
+      "name": "exponent-lower",
+      "value": "1e-05",
+      "precision": 6,
+      "valid": false,
+      "reason": "exponent notation (Python repr of 1e-05)"
+    },
+    {
+      "name": "exponent-upper",
+      "value": "1E+16",
+      "precision": 6,
+      "valid": false,
+      "reason": "exponent notation"
+    },
+    {
+      "name": "trailing-zero",
+      "value": "12.0",
+      "precision": 6,
+      "valid": false,
+      "reason": "trailing zero (the one spelling is 12)"
+    },
+    {
+      "name": "trailing-zeros-fraction",
+      "value": "0.50",
+      "precision": 6,
+      "valid": false,
+      "reason": "trailing zero in the fraction"
+    },
+    {
+      "name": "trailing-point",
+      "value": "5.",
+      "precision": 6,
+      "valid": false,
+      "reason": "trailing decimal point"
+    },
+    {
+      "name": "no-leading-digit",
+      "value": ".5",
+      "precision": 6,
+      "valid": false,
+      "reason": "at least one digit before the point"
+    },
+    {
+      "name": "leading-zero",
+      "value": "01.5",
+      "precision": 6,
+      "valid": false,
+      "reason": "leading zero before a non-zero integer part"
+    },
+    {
+      "name": "plus-sign",
+      "value": "+1",
+      "precision": 6,
+      "valid": false,
+      "reason": "only '-' is allowed as a sign"
+    },
+    {
+      "name": "negative-zero",
+      "value": "-0",
+      "precision": 6,
+      "valid": false,
+      "reason": "negative zero is not a canonical spelling; zero is '0' (ADR-0005 defines this)"
+    },
+    {
+      "name": "negative-zero-fraction",
+      "value": "-0.0",
+      "precision": 6,
+      "valid": false,
+      "reason": "negative zero with a trailing zero"
+    },
+    {
+      "name": "bare-minus",
+      "value": "-",
+      "precision": 6,
+      "valid": false,
+      "reason": "no digits"
+    },
+    {
+      "name": "empty",
+      "value": "",
+      "precision": 6,
+      "valid": false,
+      "reason": "no digits"
+    },
+    {
+      "name": "nan",
+      "value": "NaN",
+      "precision": 6,
+      "valid": false,
+      "reason": "NaN is rejected"
+    },
+    {
+      "name": "infinity",
+      "value": "Infinity",
+      "precision": 6,
+      "valid": false,
+      "reason": "Infinity is rejected; use a declared sentinel"
+    },
+    {
+      "name": "neg-infinity",
+      "value": "-Infinity",
+      "precision": 6,
+      "valid": false,
+      "reason": "-Infinity is rejected"
+    },
+    {
+      "name": "inf-short",
+      "value": "inf",
+      "precision": 6,
+      "valid": false,
+      "reason": "IEEE special spelling is not a number"
+    },
+    {
+      "name": "sentinel-undeclared",
+      "value": "unbounded",
+      "precision": 6,
+      "valid": false,
+      "reason": "a sentinel is admitted only where the schema declares it"
+    },
+    {
+      "name": "too-precise",
+      "value": "0.0000001",
+      "precision": 6,
+      "valid": false,
+      "reason": "7 fractional digits > precision 6"
+    },
+    {
+      "name": "precision-zero-fraction",
+      "value": "0.5",
+      "precision": 0,
+      "valid": false,
+      "reason": "precision 0 admits no fraction"
+    },
+    {
+      "name": "comma-separator",
+      "value": "1,5",
+      "precision": 6,
+      "valid": false,
+      "reason": "only '.' separates the fraction"
+    },
+    {
+      "name": "leading-space",
+      "value": " 1",
+      "precision": 6,
+      "valid": false,
+      "reason": "no surrounding whitespace"
+    },
+    {
+      "name": "trailing-newline",
+      "value": "1\n",
+      "precision": 6,
+      "valid": false,
+      "reason": "no surrounding whitespace"
+    },
+    {
+      "name": "fullwidth-digit",
+      "value": "１",
+      "precision": 6,
+      "valid": false,
+      "reason": "ASCII digits only"
+    },
+    {
+      "name": "json-number",
+      "value": 12,
+      "precision": 6,
+      "valid": false,
+      "reason": "a decimal field is a JSON string, never a number"
+    },
+    {
+      "name": "grandfathered-ieee-repr",
+      "value": "840.0",
+      "precision": 6,
+      "valid": false,
+      "reason": "the shortest-round-trip IEEE form of training-run@1 energy_wh; valid only in the grandfathered fields named in ADR-0005, never in a new field"
+    },
+    {
+      "name": "over-length",
+      "value": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+      "precision": 6,
+      "valid": false,
+      "reason": "longer than the 512-char family string bound"
+    }
+  ],
+  "encode": [
+    {
+      "input": "0.00001",
+      "precision": 6,
+      "expected": "0.00001"
+    },
+    {
+      "input": "1e-05",
+      "precision": 6,
+      "expected": "0.00001"
+    },
+    {
+      "input": "12.0",
+      "precision": 6,
+      "expected": "12"
+    },
+    {
+      "input": 12,
+      "precision": 2,
+      "expected": "12"
+    },
+    {
+      "input": "840.0",
+      "precision": 2,
+      "expected": "840"
+    },
+    {
+      "input": "0.125",
+      "precision": 2,
+      "expected": "0.12"
+    },
+    {
+      "input": "0.135",
+      "precision": 2,
+      "expected": "0.14"
+    },
+    {
+      "input": "2.5",
+      "precision": 0,
+      "expected": "2"
+    },
+    {
+      "input": "3.5",
+      "precision": 0,
+      "expected": "4"
+    },
+    {
+      "input": "-1.005",
+      "precision": 2,
+      "expected": "-1"
+    },
+    {
+      "input": "-0.001",
+      "precision": 2,
+      "expected": "0"
+    },
+    {
+      "input": "-0",
+      "precision": 6,
+      "expected": "0"
+    },
+    {
+      "input": "1e-7",
+      "precision": 6,
+      "expected": "0"
+    },
+    {
+      "input": "1E+3",
+      "precision": 6,
+      "expected": "1000"
+    },
+    {
+      "input": "123456789.987654321",
+      "precision": 6,
+      "expected": "123456789.987654"
+    },
+    {
+      "input": "0.0000005",
+      "precision": 6,
+      "expected": "0"
+    },
+    {
+      "input": "0.0000015",
+      "precision": 6,
+      "expected": "0.000002"
+    }
+  ],
+  "encode_rejected": [
+    {
+      "input": "NaN",
+      "reason": "NaN is rejected at the producer"
+    },
+    {
+      "input": "Infinity",
+      "reason": "Infinity is rejected; use a declared sentinel"
+    },
+    {
+      "input": "-Infinity",
+      "reason": "-Infinity is rejected"
+    },
+    {
+      "input": "sNaN",
+      "reason": "signalling NaN is rejected"
+    },
+    {
+      "input": "twelve",
+      "reason": "not a number"
+    }
+  ]
+}
