@@ -84,11 +84,18 @@ class EvidenceRef:
         return out
 
 
+_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
 def _bounded_str(value: object, label: str) -> str:
     if not isinstance(value, str) or not value or len(value) > _MAX_STR:
         raise EvidenceError(f"{label} must be a non-empty string <={_MAX_STR}")
     if "\x00" in value:
         raise EvidenceError(f"{label} contains a null byte")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise EvidenceError(f"{label} is not valid UTF-8 (lone surrogate)") from None
     return value
 
 
@@ -109,6 +116,9 @@ def _parse_ref(raw: object, *, schema: str | None) -> EvidenceRef:
     if missing:
         raise EvidenceError(f"evidence ref missing field(s): {', '.join(missing)}")
     fields = {name: _str_field(raw, name) for name in EVIDENCE_REF_FIELDS}
+    for name in ("item_id", "signer"):
+        if _CONTROL_RE.search(fields[name]):
+            raise EvidenceError(f"evidence ref field '{name}' contains a control character")
     for hex_field in ("content_hash", "signature"):
         if not _HEX_RE.match(fields[hex_field]):
             raise EvidenceError(f"evidence ref {hex_field} must be lowercase hex (8-128 chars)")
@@ -213,18 +223,27 @@ def _normalise_entry(signer: str, value: object) -> dict[str, object]:
     """Normalise a trust entry to ``{'alg', 'keys'}`` (``keys`` always a list).
 
     A bare string is an HMAC secret; an object declares ``alg`` and key material
-    (``public_key``/``key``, single value or list for rotation).
+    (single value or list for rotation). ``public_key`` is Ed25519 material only:
+    an entry with ``public_key`` and no ``alg`` is Ed25519, and ``public_key``
+    under ``hmac-sha256`` is rejected, so a published public key can never act
+    as a shared HMAC secret. HMAC secrets come only from ``key``.
     """
     if isinstance(value, str):
         if not value:
             raise EvidenceError(f"trust entry '{signer}': empty HMAC secret")
         return {"alg": "hmac-sha256", "keys": [value]}
     if isinstance(value, Mapping):
-        alg = value.get("alg", "hmac-sha256")
+        default = "ed25519" if "public_key" in value else "hmac-sha256"
+        alg = value.get("alg", default)
         if alg not in SIGNING_ALGORITHMS:
             raise EvidenceError(f"trust entry '{signer}': unknown alg {alg!r}")
-        raw = value.get("public_key") if alg == "ed25519" else value.get("key")
-        raw = raw if raw is not None else (value.get("key") or value.get("public_key"))
+        if alg == "hmac-sha256" and "public_key" in value:
+            raise EvidenceError(
+                f"trust entry '{signer}': public_key is Ed25519 material, not an HMAC secret"
+            )
+        raw = value.get("key") if alg == "hmac-sha256" else value.get("public_key")
+        if alg == "ed25519" and raw is None:
+            raw = value.get("key")  # back-compat: an Ed25519 public key under 'key'
         keys = [raw] if isinstance(raw, str) else raw
         if (
             not isinstance(keys, list)
@@ -314,7 +333,10 @@ def verify_ref(
         or fields.get("framework") != expected_framework
     ):
         return False
-    message = _message(fields)
+    try:
+        message = _message(fields)
+    except (EvidenceError, ValueError):  # incl. UnicodeEncodeError on a lone surrogate
+        return False
     signer, signature = fields.get("signer"), fields.get("signature")
     if message is None or not isinstance(signature, str):
         return False

@@ -30,6 +30,8 @@ Invariants enforced here:
 - **Reuse floor for `@1`/`@2`.** Those messages do not cover the item, so `verify_envelope` and the CLI fail every copy of a ref that one envelope claims for several items. The floor works per envelope; a gate that needs the guarantee across envelopes demands `@3`.
 - **Assurance tiers.** This verifier checks signature attestations only. A ref declaring `optimistic` or `zk` is not verified here (ADR-0003 D6).
 - **Known limitation of `@2`.** The `@2` tier is not signed, so whoever assembles an envelope can strip or change it. Under `@3` the tier is signed.
+- **Trust stores.** `public_key` is Ed25519 material only. An entry with `public_key` and no `alg` is read as Ed25519; `public_key` under `hmac-sha256` is rejected at load. A published public key therefore never acts as a shared HMAC secret. HMAC secrets come only from `key` or a bare string.
+- **Malformed input never raises past the API.** A signature that is not lowercase hex verifies as `False` before any decode; strings that are not valid UTF-8 (lone surrogates) and control characters in `item_id`/`signer` are rejected when the envelope is parsed, with `EvidenceError`. The CLI prints identifiers JSON-escaped, one line per ref, so a producer cannot forge verdict lines or terminal escapes.
 - **Key handling.** `load_private_key` accepts only regular files with mode `0600`/`0400` (or an environment variable), reads with a size bound, opens before it checks (no TOCTOU), and never puts key material in an error message. `write_private_key` refuses to overwrite.
 
 ## Test keys in this repository

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 
 from ._canonical import canonical_bytes
 from ._constants import ASSURANCE_TIERS, DEFAULT_ASSURANCE_TIER, SIGNING_ALGORITHMS
@@ -83,10 +84,23 @@ def sign_message(message: bytes, *, key: str, alg: str = "ed25519") -> str:
     raise EvidenceError(f"unknown signing algorithm {alg!r}; expected one of {SIGNING_ALGORITHMS}")
 
 
+_SIGNATURE_RE = re.compile(r"[0-9a-f]{8,128}")
+
+
 def verify_message(message: bytes, signature: str, key: str, *, alg: str) -> bool:
-    """Verify a detached signature over message bytes (fail-closed)."""
+    """Verify a detached signature over message bytes (fail-closed).
+
+    A signature that is not lowercase hex returns ``False`` before any decode or
+    comparison, so non-ASCII or surrogate input cannot raise.
+    """
+    if not isinstance(signature, str) or not _SIGNATURE_RE.fullmatch(signature):
+        return False
     if alg == "hmac-sha256":
-        return hmac.compare_digest(_hmac_hex(message, key), signature)
+        try:
+            expected = _hmac_hex(message, key)
+        except (AttributeError, UnicodeEncodeError):
+            return False
+        return hmac.compare_digest(expected.encode("ascii"), signature.encode("ascii"))
     from cryptography.exceptions import InvalidSignature
 
     ed25519 = _require_crypto()

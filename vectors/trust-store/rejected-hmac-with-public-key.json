@@ -1,0 +1,9 @@
+{
+  "_reason": "public_key under alg hmac-sha256 is rejected at load: a published public key must never act as a shared HMAC secret",
+  "document": {
+    "presidio-hardened-ai": {
+      "alg": "hmac-sha256",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  }
+}

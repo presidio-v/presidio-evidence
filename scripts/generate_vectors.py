@@ -21,8 +21,8 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 V = ROOT / "vectors"
 
-# Cross-repo constants — pinned by presidio-hardened-ai tests/test_ed25519.py,
-# ikigov-assess tests/test_evidence.py, and x402. Do not change within @1.
+# Cross-repo constants — pinned by the consumers' tests (ikigov-assess
+# tests/test_evidence.py, x402, a private producer). Do not change within @1.
 PRIV = "01" * 32
 EXPECTED_PUB = "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
 EXPECTED_SIG = (
@@ -314,6 +314,29 @@ def build() -> dict[pathlib.Path, dict]:
         ("invalid-missing-key", {"s": {"alg": "ed25519"}}, "key material required"),
     ]:
         out[V / f"trust-store/{name}.json"] = {"_reason": why, "document": doc}
+
+    # Schema-valid trust stores the verifier must still read safely (audit
+    # 2026-10-25): public_key is Ed25519 material and never an HMAC secret.
+    # A forger who knows the public key computes HMAC(public_key, message).
+    forged = hmaclib.new(pub.encode(), msg, hashlib.sha256).hexdigest()
+    out[V / "trust-store/rejected-hmac-with-public-key.json"] = {
+        "_reason": (
+            "public_key under alg hmac-sha256 is rejected at load: a published public "
+            "key must never act as a shared HMAC secret"
+        ),
+        "document": {SIGNER: {"alg": "hmac-sha256", "public_key": pub}},
+    }
+    out[V / "trust-store/public-key-implies-ed25519.json"] = {
+        "_reason": (
+            "an entry with public_key and no alg is Ed25519: the golden Ed25519 "
+            "signature verifies, and an HMAC forged with the public key as secret does not"
+        ),
+        "document": {SIGNER: {"public_key": pub}},
+        "content_hash": CH,
+        "signer": SIGNER,
+        "verifies": {"signature_hex": sig},
+        "must_not_verify": {"signature_hex": forged},
+    }
 
     # ------------------------------------------------------------------
     # Provenance-parents convention (ADR-0002, Accepted 2026-07-02) and the
