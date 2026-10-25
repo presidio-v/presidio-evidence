@@ -1,0 +1,19 @@
+{
+  "schema": "presidio-hardened/evidence-ref@3",
+  "source": "presidio-hardened-ai",
+  "generated_at": "2026-10-25T00:00:00+00:00",
+  "evidence": [
+    {
+      "item_id": "D3",
+      "source": "presidio-hardened-ai",
+      "source_version": "test",
+      "ledger_ref": "ledger:golden",
+      "content_hash": "ca5dc0899a875d6a675d0b7a3b226d8f2119f1a17aa1eec11ec51fd737985974",
+      "signer": "presidio-hardened-ai",
+      "signature": "e66dcf3820f1bfe723cb7937258fcb1a4248139b4703f9c844b043bfb391906f0fbc347eadaf29bad6fb54848ae95dce49a4801dfe48e6b621ef049089b32906",
+      "claimed_at": "2026-10-25T00:00:00+00:00",
+      "framework": "iki-gov",
+      "assurance_tier": "optimistic"
+    }
+  ]
+}

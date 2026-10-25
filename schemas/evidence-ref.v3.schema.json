@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://presidio-group.eu/schemas/evidence-ref.v3.schema.json",
+  "title": "presidio-hardened/evidence-ref@3",
+  "description": "Cross-repo signed evidence contract, subject-binding revision (ADR-0004). Frozen with the same discipline as @1 and @2 (ADR-0001 D5). Differs from @2 in exactly two ways: each evidenceRef REQUIRES 'framework', the id of the vocabulary its item_id belongs to (one fixed vocabulary per id, never reused), and the detached signature covers the subject and the tier: alg(canonical_json({\"assurance_tier\": <resolved tier, 'attested' when absent>, \"content_hash\": ..., \"framework\": ..., \"item_id\": ..., \"signer\": ...})) where canonical_json sorts keys, uses (\",\", \":\") separators, UTF-8, ensure_ascii=False. A relabelled item_id, framework or assurance_tier therefore fails verification. The envelope 'schema' field is required, as in @2.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "presidio-hardened/evidence-ref@3",
+      "description": "Required; must match exactly. It selects the signed message, so verifiers never infer @3 from field presence."
+    },
+    "use_case": {
+      "$ref": "#/$defs/boundedString"
+    },
+    "source": {
+      "$ref": "#/$defs/boundedString"
+    },
+    "source_version": {
+      "$ref": "#/$defs/boundedString"
+    },
+    "generated_at": {
+      "$ref": "#/$defs/boundedString"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidenceRef"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "evidence"
+  ],
+  "$defs": {
+    "boundedString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000]*$"
+    },
+    "lowercaseHex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8,128}$"
+    },
+    "assuranceTier": {
+      "type": "string",
+      "enum": [
+        "attested",
+        "optimistic",
+        "zk"
+      ],
+      "description": "Assurance regime of the referenced evidence (ADR-0003). Optional; 'attested' when absent. Signed in @3 (resolved value)."
+    },
+    "evidenceRef": {
+      "type": "object",
+      "description": "One subject-bound evidence reference. The 8 @1 fields and 'framework' are required; 'assurance_tier' is optional. framework, item_id and the resolved assurance_tier are inside the signed message.",
+      "properties": {
+        "item_id": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "source": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "source_version": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "ledger_ref": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "content_hash": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/boundedString"
+            },
+            {
+              "$ref": "#/$defs/lowercaseHex"
+            }
+          ]
+        },
+        "signer": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "signature": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/boundedString"
+            },
+            {
+              "$ref": "#/$defs/lowercaseHex"
+            }
+          ]
+        },
+        "claimed_at": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "framework": {
+          "$ref": "#/$defs/framework"
+        },
+        "assurance_tier": {
+          "$ref": "#/$defs/assuranceTier"
+        }
+      },
+      "required": [
+        "item_id",
+        "source",
+        "source_version",
+        "ledger_ref",
+        "content_hash",
+        "signer",
+        "signature",
+        "claimed_at",
+        "framework"
+      ]
+    },
+    "framework": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+      "description": "Vocabulary of item_id (for example 'iki-gov'). Signed. An id names one fixed item vocabulary and is never reused."
+    }
+  }
+}

@@ -5,7 +5,7 @@ load from a file whose mode is enforced to ``0600`` (no group/other bits) or
 from an environment variable — never from the repo, never logged. This module
 never emits key material in an exception message or anywhere else; the caller
 receives the hex string and nothing more. Key custody stays out-of-band
-(founder-held, Humboldt root-of-trust): there is no key storage here, only
+(the operator holds production keys): there is no key storage here, only
 generation and loading.
 
 Ed25519 needs the optional ``cryptography`` dependency (``[crypto]`` extra).

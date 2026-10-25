@@ -80,7 +80,7 @@ Made precise:
 
 ## Action items
 
-1. [ ] Founder sign-off on N1–N8.
+1. [x] Founder sign-off on N1–N8 (Accepted 2026-10-18, PR #46).
 2. [x] Reference encoder/validator, `vectors/numeric-encoding/`, Python and Rust conformance (this PR).
 3. [ ] arch-translucency: adopt N1–N7 when `training-run@2` / `energy-reading@2` are cut; until then, nothing changes on its wire.
 4. [ ] ikigov-assess: predicate-hash preimage without floats (open point 2).

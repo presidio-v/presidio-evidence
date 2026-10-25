@@ -379,7 +379,8 @@ fn v2_schema_constants_match_python_side() {
         presidio_evidence::EVIDENCE_REF_SCHEMA_IDS,
         [
             "presidio-hardened/evidence-ref@1",
-            "presidio-hardened/evidence-ref@2"
+            "presidio-hardened/evidence-ref@2",
+            "presidio-hardened/evidence-ref@3"
         ]
     );
     assert_eq!(
@@ -1057,4 +1058,237 @@ fn training_run_parent_is_the_certificate_identity() {
         r["signature"].as_str().unwrap(),
         notes["trust_store"][signer]["public_key"].as_str().unwrap(),
     ));
+}
+
+// ── evidence-ref@3 subject binding (ADR-0004) ────────────────────────────────
+
+use presidio_evidence::signing_message_v3;
+
+const V3: &str = "presidio-hardened/evidence-ref@3";
+
+fn hmac_hex(key: &str, msg: &str) -> String {
+    let mut mac = Hmac::<Sha256>::new_from_slice(key.as_bytes()).unwrap();
+    mac.update(msg.as_bytes());
+    hex::encode(mac.finalize().into_bytes())
+}
+
+fn ed25519_verifies(public_key_hex: &str, msg: &str, signature_hex: &str) -> bool {
+    let (Ok(pk), Ok(sig)) = (hex::decode(public_key_hex), hex::decode(signature_hex)) else {
+        return false;
+    };
+    let (Ok(pk), Ok(sig)) = (<[u8; 32]>::try_from(pk), <[u8; 64]>::try_from(sig)) else {
+        return false;
+    };
+    let Ok(pk) = VerifyingKey::from_bytes(&pk) else {
+        return false;
+    };
+    pk.verify(msg.as_bytes(), &Signature::from_bytes(&sig))
+        .is_ok()
+}
+
+fn is_framework_id(s: &str) -> bool {
+    let b = s.as_bytes();
+    !b.is_empty()
+        && b.len() <= 64
+        && (b[0].is_ascii_lowercase() || b[0].is_ascii_digit())
+        && b.iter()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || b"._-".contains(c))
+}
+
+/// The message an envelope's schema selects for one ref (never field presence).
+fn message_for(schema: &str, r: &Value) -> Option<String> {
+    let ch = r["content_hash"].as_str()?;
+    let signer = r["signer"].as_str()?;
+    if schema != V3 {
+        return Some(signing_message(ch, signer));
+    }
+    let framework = r["framework"].as_str().filter(|f| is_framework_id(f))?;
+    let tier = r["assurance_tier"].as_str();
+    if tier.is_some_and(|t| !presidio_evidence::ASSURANCE_TIERS.contains(&t)) {
+        return None;
+    }
+    Some(signing_message_v3(
+        ch,
+        signer,
+        framework,
+        r["item_id"].as_str()?,
+        tier,
+    ))
+}
+
+fn signature_verifies(trust: &Value, schema: &str, r: &Value) -> bool {
+    let Some(msg) = message_for(schema, r) else {
+        return false;
+    };
+    let entry = &trust[r["signer"].as_str().unwrap_or("")];
+    let sig = r["signature"].as_str().unwrap_or("");
+    match entry["alg"].as_str() {
+        Some("ed25519") => ed25519_verifies(entry["public_key"].as_str().unwrap(), &msg, sig),
+        Some("hmac-sha256") => hmac_hex(entry["key"].as_str().unwrap(), &msg) == sig,
+        _ => false,
+    }
+}
+
+/// verify_envelope without a framework demand: tier, @1/@2 reuse floor, signature.
+fn envelope_verdicts(trust: &Value, doc: &Value) -> Vec<bool> {
+    let schema = doc["schema"]
+        .as_str()
+        .unwrap_or("presidio-hardened/evidence-ref@1");
+    let refs = doc["evidence"].as_array().unwrap();
+    let tiered = schema != "presidio-hardened/evidence-ref@1";
+    refs.iter()
+        .map(|r| {
+            let tier = if tiered {
+                r["assurance_tier"].as_str()
+            } else {
+                None
+            };
+            if tier.unwrap_or("attested") != "attested" {
+                return false;
+            }
+            let reused = schema != V3
+                && refs.iter().any(|o| {
+                    o["signer"] == r["signer"]
+                        && o["content_hash"] == r["content_hash"]
+                        && o["item_id"] != r["item_id"]
+                });
+            !reused && signature_verifies(trust, schema, r)
+        })
+        .collect()
+}
+
+#[test]
+fn v3_schema_constants_match_python_side() {
+    assert_eq!(presidio_evidence::EVIDENCE_REF_SCHEMA_ID_V3, V3);
+    assert_eq!(
+        presidio_evidence::FRAMEWORK_PATTERN,
+        "^[a-z0-9][a-z0-9._-]{0,63}$"
+    );
+}
+
+#[test]
+fn v3_signing_goldens_reproduce() {
+    for (name, alg) in [
+        ("vectors/signing/ed25519-golden-v3.json", "ed25519"),
+        ("vectors/signing/hmac-sha256-golden-v3.json", "hmac-sha256"),
+    ] {
+        let golden = load(name);
+        assert_eq!(golden["algorithm"], alg);
+        for case in golden["cases"].as_array().unwrap() {
+            let msg = signing_message_v3(
+                case["content_hash"].as_str().unwrap(),
+                case["signer"].as_str().unwrap(),
+                case["framework"].as_str().unwrap(),
+                case["item_id"].as_str().unwrap(),
+                case["assurance_tier"].as_str(),
+            );
+            assert_eq!(msg, case["message_canonical"].as_str().unwrap());
+            let sig = if alg == "ed25519" {
+                let sk_bytes = hex::decode(golden["private_key_hex"].as_str().unwrap()).unwrap();
+                let sk = SigningKey::from_bytes(&<[u8; 32]>::try_from(sk_bytes).unwrap());
+                hex::encode(sk.sign(msg.as_bytes()).to_bytes())
+            } else {
+                hmac_hex(golden["key"].as_str().unwrap(), &msg)
+            };
+            assert_eq!(sig, case["signature_hex"].as_str().unwrap());
+            let keys: Vec<String> = serde_json::from_str::<serde_json::Map<String, Value>>(&msg)
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect();
+            assert_eq!(keys.len(), 5, "an @3 message never has the @1/@2 key set");
+        }
+    }
+}
+
+#[test]
+fn v3_vectors_meet_their_expectations() {
+    let expect = load("vectors/evidence-ref-v3/expectations.json");
+    let trust = &expect["trust_store"];
+    let framework = expect["expected_framework"].as_str().unwrap();
+    for (name, rows) in expect["files"].as_object().unwrap() {
+        let doc = load(&format!("vectors/evidence-ref-v3/{name}"));
+        let schema = doc["schema"]
+            .as_str()
+            .unwrap_or("presidio-hardened/evidence-ref@1");
+        let refs = doc["evidence"].as_array().unwrap();
+        let verdicts = envelope_verdicts(trust, &doc);
+        let rows = rows.as_array().unwrap();
+        assert_eq!(refs.len(), rows.len(), "{name}");
+        for ((r, row), verdict) in refs.iter().zip(rows).zip(verdicts) {
+            let sig_ok = signature_verifies(trust, schema, r);
+            assert_eq!(
+                sig_ok,
+                row["signature_verifies"].as_bool().unwrap(),
+                "{name}"
+            );
+            let bound = schema == V3 && r["framework"].as_str() == Some(framework) && sig_ok;
+            assert_eq!(
+                bound,
+                row["verifies_for_framework"].as_bool().unwrap(),
+                "{name}"
+            );
+            assert_eq!(
+                verdict,
+                row["envelope_verifies"].as_bool().unwrap(),
+                "{name}"
+            );
+        }
+    }
+}
+
+#[test]
+fn v3_invalid_vectors_lack_a_valid_framework() {
+    for name in ["invalid-missing-framework", "invalid-framework-pattern"] {
+        let doc = load(&format!("vectors/evidence-ref-v3/{name}.json"));
+        let r = &doc["document"]["evidence"][0];
+        assert!(
+            !r["framework"].as_str().is_some_and(is_framework_id),
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn v2_reuse_floor_fails_cloned_refs() {
+    let doc = load("vectors/evidence-ref-v2/reused-ref.json");
+    let notes = load("vectors/evidence-ref-v2/reused-ref.notes.json");
+    let trust = &notes["trust_store"];
+    for r in doc["evidence"].as_array().unwrap() {
+        assert!(signature_verifies(
+            trust,
+            "presidio-hardened/evidence-ref@2",
+            r
+        ));
+    }
+    let expected: Vec<bool> = notes["envelope_verifies"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_bool().unwrap())
+        .collect();
+    assert_eq!(envelope_verdicts(trust, &doc), expected);
+}
+
+#[test]
+fn scoutsuite_cloud_posture_vector_verifies_and_legacy_fails() {
+    let doc = load("vectors/cloud-posture/valid-envelope.json");
+    let notes = load("vectors/cloud-posture/valid-envelope.notes.json");
+    let trust = &notes["trust_store"];
+    assert!(envelope_verdicts(trust, &doc).into_iter().all(|ok| ok));
+    for r in doc["evidence"].as_array().unwrap() {
+        let item = r["item_id"].as_str().unwrap();
+        let subject = canonical_string(&notes["claims"][item]["claim_subject"]).unwrap();
+        assert_eq!(
+            sha256_hex(subject.as_bytes()),
+            r["content_hash"].as_str().unwrap()
+        );
+        let mut legacy = r.clone();
+        legacy["signature"] = notes["legacy_signatures"][item].clone();
+        assert!(!signature_verifies(
+            trust,
+            "presidio-hardened/evidence-ref@2",
+            &legacy
+        ));
+    }
 }

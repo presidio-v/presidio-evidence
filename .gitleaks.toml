@@ -1,0 +1,16 @@
+# Secret scanning: the default gitleaks rules, minus the published test fixtures.
+# vectors/ and the code that generates or checks them carry well-known test keys
+# on purpose (Ed25519 01x32, customer 02x32, HMAC "shared-key"); see SECURITY.md.
+title = "presidio-evidence"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Published test fixtures (SECURITY.md, 'Test keys in this repository')"
+paths = [
+  '''^vectors/''',
+  '''^scripts/generate_vectors\.py$''',
+  '''^tests/''',
+  '''^rust/tests/''',
+]

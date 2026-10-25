@@ -1,0 +1,34 @@
+{
+  "description": "evidence-ref@3 golden signatures (ADR-0004 D2): the message is canonical({assurance_tier, content_hash, framework, item_id, signer}) with assurance_tier resolved ('attested' when absent, shown as null here). The quoted signer pins canonical escaping, so a 5-key @3 message can never collide with a 2-key @1/@2 message.",
+  "algorithm": "hmac-sha256",
+  "key": "shared-key",
+  "cases": [
+    {
+      "content_hash": "abc123def456",
+      "signer": "presidio-hardened-ai",
+      "framework": "iki-gov",
+      "item_id": "D1",
+      "assurance_tier": null,
+      "message_canonical": "{\"assurance_tier\":\"attested\",\"content_hash\":\"abc123def456\",\"framework\":\"iki-gov\",\"item_id\":\"D1\",\"signer\":\"presidio-hardened-ai\"}",
+      "signature_hex": "e2318fe72a506576913272e7eb0284b64ceba7f3ccf6017869d6346cbdb02f97"
+    },
+    {
+      "content_hash": "abc123def456",
+      "signer": "presidio-hardened-ai",
+      "framework": "iki-gov",
+      "item_id": "D1",
+      "assurance_tier": "zk",
+      "message_canonical": "{\"assurance_tier\":\"zk\",\"content_hash\":\"abc123def456\",\"framework\":\"iki-gov\",\"item_id\":\"D1\",\"signer\":\"presidio-hardened-ai\"}",
+      "signature_hex": "6fb1ed856662eace0972f18a02887cfda233f3f0a2ecdf7ed3737efbad9d04fb"
+    },
+    {
+      "content_hash": "abc123def456",
+      "signer": "presidio \"quoted\", signer",
+      "framework": "iki-gov",
+      "item_id": "D1",
+      "assurance_tier": null,
+      "message_canonical": "{\"assurance_tier\":\"attested\",\"content_hash\":\"abc123def456\",\"framework\":\"iki-gov\",\"item_id\":\"D1\",\"signer\":\"presidio \\\"quoted\\\", signer\"}",
+      "signature_hex": "a39579eac58972e8a390541f1054a615cf0bbb5dd960600d0fbe93b9a727ee25"
+    }
+  ]
+}

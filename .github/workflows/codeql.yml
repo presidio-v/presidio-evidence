@@ -16,8 +16,8 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     # CodeQL code scanning requires GitHub Advanced Security on private repos.
-    # Skip while private (ADR-0001 D6); runs automatically once the repo is public.
-    # SAST coverage while private: ruff S rules in the CI lint step.
+    # Skip while private; runs automatically once the repo is public (ADR-0001
+    # D6 amendment). SAST coverage while private: ruff S rules in the CI lint step.
     if: github.event.repository.visibility == 'public'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

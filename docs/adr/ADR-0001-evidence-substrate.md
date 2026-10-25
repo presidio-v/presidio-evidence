@@ -3,8 +3,8 @@
 **Status:** Accepted — founder-signed 2026-06-12, Vladimir Stantchev (V.S.)
 **Date:** 2026-06-12
 **Deciders:** V.S. (founder, governing account)
-**Source mandate:** development-plan.md §6; session-4-evidence-library-adr.md
-**Precondition note:** Session 2 done (parts 1–2), session 3 **not started** at survey time. The x402 surface was surveyed as committed in-repo (v0.4.0 screening API). **Review trigger:** if session 3 changes the x402 screening evidence surface, revisit §D1/§D4 before extraction (Q4).
+**Source mandate:** the family development plan (extract one evidence library before the implementations drift).
+**Precondition note:** The x402 surface was surveyed as committed in-repo (v0.4.0 screening API). **Review trigger:** if the x402 screening evidence surface changes, revisit §D1/§D4 before extraction.
 
 ## Context
 
@@ -44,7 +44,7 @@ One repo, two implementations: Python package `presidio_evidence` (root `pyproje
 
 ### D3 — Key management and rotation
 
-Keys are 32-byte raw Ed25519, hex-encoded (64 chars), matching every producer. Private keys load from file (mode 0600 enforced) or env var; never from the repo, never logged. Trust store format is ikigov's normalised form, adopted as `trust-store@1`: `{signer: {"alg": "ed25519"|"hmac-sha256", "public_key"|"key": "<hex>" | ["<hex>", …]}}` (bare string = HMAC back-compat). **Rotation = append the new key to the signer's list, re-sign forward, retire the old key after the verification window.** Signer identity stays bound inside the signed message. Key generation/custody remains out-of-band (founder-held, per Humboldt root-of-trust); the library ships generation helpers but no key storage.
+Keys are 32-byte raw Ed25519, hex-encoded (64 chars), matching every producer. Private keys load from file (mode 0600 enforced) or env var; never from the repo, never logged. Trust store format is ikigov's normalised form, adopted as `trust-store@1`: `{signer: {"alg": "ed25519"|"hmac-sha256", "public_key"|"key": "<hex>" | ["<hex>", …]}}` (bare string = HMAC back-compat). **Rotation = append the new key to the signer's list, re-sign forward, retire the old key after the verification window.** Signer identity stays bound inside the signed message. Key generation/custody remains out-of-band (held by the maintainers); the library ships generation helpers but no key storage.
 
 ### D4 — Verification semantics: fail-closed, uniformly
 
@@ -57,6 +57,8 @@ Schema IDs are `presidio-hardened/<name>@<major>`, **major-only**. Within a majo
 ### D6 — Repo visibility: private until the founder clears it
 
 **Default: private repo.** Visibility is revisited only on a recorded founder decision.
+
+> **Amended 2026-10-25 (founder decision): the repository is public from v0.5.0.** The development history was published with internal correspondence removed.
 
 ## Options Considered
 
@@ -79,7 +81,7 @@ Schema IDs are `presidio-hardened/<name>@<major>`, **major-only**. Within a majo
 | Migration risk | High — invalidates a shipped cross-repo contract and workshop artefacts already in customer hands |
 | Treasury fit | Forced — Ed25519 grafted onto a keyless design |
 
-**Pros:** one schema everywhere. **Cons:** violates session scope ("extraction + conformance only, no new capability"); churns the customer-shipped x402 surface; rejected.
+**Pros:** one schema everywhere. **Cons:** violates the scope ("extraction + conformance only, no new capability"); churns the customer-shipped x402 surface; rejected.
 
 ### Option C: Python-only library, treasury via schema document alone
 
@@ -99,14 +101,14 @@ The decisive observation: **the unification already happened in the wire format;
 - Easier: adding a fifth consumer (arch-translucency runtime posture evidence is the named candidate) — implement against vectors, done.
 - Easier: algorithm rotation (alg lives in the trust store, not the schema — already true, now documented and tested).
 - Harder: changing `evidence-ref@1` in any consumer unilaterally — CI in this repo breaks, by design.
-- Revisit: Layer 2 approval block (@2), hex-bound tightening (@2), x402 surface after session 3, visibility on a founder decision.
+- Revisit: Layer 2 approval block (@2), hex-bound tightening (@2), x402 surface after the OEM-kit work, visibility (done: D6 amendment).
 
 ## Action Items
 
-1. [x] Scaffold repo: schemas + golden vectors + conformance tests in both languages as first commit (this session).
-2. [x] Migration map per consumer (`docs/MIGRATION.md`, this session).
+1. [x] Scaffold repo: schemas + golden vectors + conformance tests in both languages as first commit.
+2. [x] Migration map per consumer (`docs/MIGRATION.md`).
 3. [x] Visibility question put to the founder (decision recorded in item 4).
-4. [x] Founder signed this ADR (Accepted, 2026-06-12). Visibility decision recorded 2026-07-04. D6 resolved: repo stays private.
+4. [x] Founder signed this ADR (Accepted, 2026-06-12). Visibility decision recorded 2026-07-04; D6 resolved: repo stays private. Superseded 2026-10-25 by the D6 amendment: public from v0.5.0.
 5. [ ] Q4 extraction in migration-map order: ikigov → hardened-ai → x402 → treasury (schema-only).
 6. [x] Rust CI lane promoted from manual trigger to push/PR — validated green locally (fmt + clippy `-D warnings` + 6/6 conformance tests, 2026-06-12) and green on first push run.
-7. [ ] **Protect `main` (block force-push + deletion).** Blocked 2026-06-12: branch protection and rulesets both require a paid plan for **private** repos, and `presidio-v` is on Free. D6 keeps the repo private, so this cannot be applied server-side now. Apply after either (a) org upgrade to Team/Pro, or (b) the repo goes public on founder clearance — whichever comes first. (Session-1 root-of-trust carry.)
+7. [ ] **Protect `main` (block force-push + deletion).** Blocked 2026-06-12: branch protection and rulesets both require a paid plan for **private** repos, and `presidio-v` is on Free. Unblocked by the D6 amendment: applied when the repository goes public (v0.5.0).

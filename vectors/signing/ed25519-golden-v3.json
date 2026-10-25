@@ -1,0 +1,35 @@
+{
+  "description": "evidence-ref@3 golden signatures (ADR-0004 D2): the message is canonical({assurance_tier, content_hash, framework, item_id, signer}) with assurance_tier resolved ('attested' when absent, shown as null here). The quoted signer pins canonical escaping, so a 5-key @3 message can never collide with a 2-key @1/@2 message.",
+  "algorithm": "ed25519",
+  "private_key_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+  "public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "cases": [
+    {
+      "content_hash": "abc123def456",
+      "signer": "presidio-hardened-ai",
+      "framework": "iki-gov",
+      "item_id": "D1",
+      "assurance_tier": null,
+      "message_canonical": "{\"assurance_tier\":\"attested\",\"content_hash\":\"abc123def456\",\"framework\":\"iki-gov\",\"item_id\":\"D1\",\"signer\":\"presidio-hardened-ai\"}",
+      "signature_hex": "eaf2620b3069fc786b7ae0c439b8ef0ec1bb3d3761bafe62233759149a25555fe278b32a59a9e7eb514e128e1c0e61b8020942ba09c24210b4bfec25b586be00"
+    },
+    {
+      "content_hash": "abc123def456",
+      "signer": "presidio-hardened-ai",
+      "framework": "iki-gov",
+      "item_id": "D1",
+      "assurance_tier": "zk",
+      "message_canonical": "{\"assurance_tier\":\"zk\",\"content_hash\":\"abc123def456\",\"framework\":\"iki-gov\",\"item_id\":\"D1\",\"signer\":\"presidio-hardened-ai\"}",
+      "signature_hex": "2af5e444c0bf3ee1ffee1c84cba84b0cf73925cb9219f004b4832952552e53869d699ec566747f2fc5fe0df88147f6953bd69fe243b2363ca0f493a675428f06"
+    },
+    {
+      "content_hash": "abc123def456",
+      "signer": "presidio \"quoted\", signer",
+      "framework": "iki-gov",
+      "item_id": "D1",
+      "assurance_tier": null,
+      "message_canonical": "{\"assurance_tier\":\"attested\",\"content_hash\":\"abc123def456\",\"framework\":\"iki-gov\",\"item_id\":\"D1\",\"signer\":\"presidio \\\"quoted\\\", signer\"}",
+      "signature_hex": "769322d24f305d0007abfe4b2aa855d6b197fa79dc1d1dc7aa1324ff9c01b47dd8455c8d93324fe342a7f00e3746c4c67246a0b46144a0786b6fcba384c38503"
+    }
+  ]
+}

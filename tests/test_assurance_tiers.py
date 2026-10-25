@@ -42,7 +42,7 @@ def test_tier_constants() -> None:
     assert ASSURANCE_TIERS == ("attested", "optimistic", "zk")
     assert DEFAULT_ASSURANCE_TIER == "attested"
     assert EVIDENCE_REF_SCHEMA_ID_V2 == "presidio-hardened/evidence-ref@2"
-    assert EVIDENCE_REF_SCHEMA_IDS == (EVIDENCE_REF_SCHEMA_ID, EVIDENCE_REF_SCHEMA_ID_V2)
+    assert EVIDENCE_REF_SCHEMA_IDS[:2] == (EVIDENCE_REF_SCHEMA_ID, EVIDENCE_REF_SCHEMA_ID_V2)
 
 
 # ── valid-tiers: one ref per explicit tier ───────────────────────────────────
@@ -105,8 +105,8 @@ def test_v2_unknown_tier_rejected() -> None:
 
 
 def test_v2_wrong_schema_id_rejected() -> None:
-    # A schema id outside {@1, @2} is rejected fail-closed (ADR-0001 D4/D5).
-    doc = dict(_load("valid-tier-absent.json"), schema="presidio-hardened/evidence-ref@3")
+    # A schema id outside {@1, @2, @3} is rejected fail-closed (ADR-0001 D4/D5).
+    doc = dict(_load("valid-tier-absent.json"), schema="presidio-hardened/evidence-ref@4")
     with pytest.raises(EvidenceError, match="unsupported evidence schema"):
         parse_document(doc)
 

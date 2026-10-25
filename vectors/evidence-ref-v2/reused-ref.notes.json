@@ -1,0 +1,18 @@
+{
+  "description": "The ADR-0004 D5 floor for @1/@2: one genuine golden ref cloned under items D1 and D2. Each copy's signature verifies on its own; the envelope fails for both, because the @2 message does not say which item the producer meant.",
+  "signature_verifies": [
+    true,
+    true
+  ],
+  "envelope_verifies": [
+    false,
+    false
+  ],
+  "envelope_reason": "reused under 2 items",
+  "trust_store": {
+    "presidio-hardened-ai": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  }
+}

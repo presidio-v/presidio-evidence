@@ -1,9 +1,47 @@
 # Changelog
 
 Release notes up to v0.3.0 live in the GitHub releases and in PRESIDIO-REQ.md.
-From here on, changes are recorded in this file first.
+From here on, changes are recorded in this file first. Pull-request numbers up to
+#50 refer to the private development repository this history was published from.
 
 ## [Unreleased]
+
+First public release. The repository and its history are public, and the
+package is published on PyPI as `presidio-evidence`. Rust crate 0.3.0
+(`publish = false`).
+
+### Added
+- **`evidence-ref@3` (ADR-0004, Proposed): the signature binds the subject.**
+  Each ref carries a required `framework`; the signed message is
+  `canonical({assurance_tier, content_hash, framework, item_id, signer})`. A ref
+  copied under another item, framework or tier no longer verifies. The envelope
+  schema selects the message, never field presence. New: `signing_message_v3`,
+  `sign_evidence_v3`, `verify_ref(..., schema=, expected_framework=)`,
+  `verify_envelope`, `RefResult`, `reused_refs`, `EVIDENCE_REF_SCHEMA_ID_V3`,
+  `FRAMEWORK_PATTERN`; CLI `verify --require-subject-binding FRAMEWORK`; Rust
+  `signing_message_v3`. Vectors under `vectors/evidence-ref-v3/` and
+  `vectors/signing/*-golden-v3.json`. **Why it matters:** one genuine signed ref
+  could be copied under every checklist item and open every gate (ikigov-assess
+  audit 2026-09-30); under `@3` it opens exactly the one it was signed for.
+- **Contract trees as package data.** The wheel ships `schemas/` and `vectors/`;
+  `schemas_dir()`, `vectors_dir()`, `schema_ids()`, `load_schema()`.
+- **scoutsuite consumer vector** (`vectors/cloud-posture/`): clean cloud controls
+  as scoutsuite 0.30.0 signs them, with the 0.29.x legacy signatures as
+  must-fail cases.
+- `vectors/evidence-ref-v2/reused-ref.json` pins the `@1`/`@2` reuse floor.
+
+### Changed
+- **CLI `verify` fails an `@1`/`@2` envelope that claims one ref for several
+  items**, reporting "reused under N items" (ADR-0004 D5; the rule ikigov-assess
+  already applies). **Why it matters:** those messages do not cover the item, so
+  the copy is indistinguishable from the original.
+- `verify_ref` reads `assurance_tier` under `@3` as well as `@2`.
+- Package metadata: the `Private :: Do Not Upload` classifier is gone; project
+  URLs and Python 3.10–3.13 classifiers added.
+
+### Security
+- Known limitation, now documented: the `@2` tier is not signed and can be
+  stripped by whoever assembles an envelope. Use `@3` where the tier matters.
 
 ## [0.4.0] - 2026-10-18
 

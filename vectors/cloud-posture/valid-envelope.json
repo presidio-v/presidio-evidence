@@ -1,0 +1,28 @@
+{
+  "schema": "presidio-hardened/evidence-ref@2",
+  "source": "presidio-hardened-scoutsuite",
+  "source_version": "test",
+  "generated_at": "2026-10-18T00:00:00+00:00",
+  "evidence": [
+    {
+      "item_id": "O5",
+      "source": "presidio-hardened-scoutsuite",
+      "source_version": "test",
+      "ledger_ref": "presidio-report-manifest:sha256/4988a60ec5134c328bcc92a1100575a9ad3398a1f145b7414fe9967a390d3372",
+      "content_hash": "94def9d985b61815ac3665405322fbac29e422456d7f4823cd0356b13db43d0b",
+      "signer": "presidio-hardened-scoutsuite",
+      "signature": "b81f875283a66db539b4e8fd4afec78bcc6520bee9806dc6cdc8fc335d8b3610a0809ddad2f1b1c1df33e75e3aeec8b858fbf319b5ed3e1683a75670a4b43409",
+      "claimed_at": "2026-10-18T00:00:00+00:00"
+    },
+    {
+      "item_id": "T5",
+      "source": "presidio-hardened-scoutsuite",
+      "source_version": "test",
+      "ledger_ref": "presidio-report-manifest:sha256/4988a60ec5134c328bcc92a1100575a9ad3398a1f145b7414fe9967a390d3372",
+      "content_hash": "e6121822d01805fca2fab561c41ff31ec595407300f951c98f5d9049ea39f206",
+      "signer": "presidio-hardened-scoutsuite",
+      "signature": "2cc6f3d2f410cd27a96aa9e705dee5063dc1e8b0a0bcf94ecf9ac01a63a975d63998c2ca4f45ab80082a62a8e341c2c3ad4b0e67d0238faca74b30b7196b1b08",
+      "claimed_at": "2026-10-18T00:00:00+00:00"
+    }
+  ]
+}

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from ._constants import (
@@ -19,14 +19,17 @@ from ._constants import (
     DEFAULT_ASSURANCE_TIER,
     EVIDENCE_REF_FIELDS,
     EVIDENCE_REF_SCHEMA_ID,
-    EVIDENCE_REF_SCHEMA_ID_V2,
+    EVIDENCE_REF_SCHEMA_ID_V3,
     EVIDENCE_REF_SCHEMA_IDS,
+    FRAMEWORK_PATTERN,
     SIGNING_ALGORITHMS,
+    TIERED_SCHEMA_IDS,
 )
 from ._errors import EvidenceError
-from ._signing import _require_crypto, verify_ed25519, verify_hmac
+from ._signing import _require_crypto, signing_message, signing_message_v3, verify_message
 
 _HEX_RE = re.compile(r"^[0-9a-f]{8,128}$")
+_FRAMEWORK_RE = re.compile(FRAMEWORK_PATTERN)
 _MAX_STR = 512
 
 
@@ -36,9 +39,13 @@ class EvidenceRef:
 
     ``assurance_tier`` is the additive optional field of ``evidence-ref@2``
     (ADR-0003); ``None`` on the wire (absent, or an @1 ref) resolves to the
-    default ``"attested"`` via :attr:`tier`. It is metadata about the referenced
-    evidence and is NOT part of the signed message (still
-    ``canonical({content_hash, signer})``), so it never affects verification.
+    default ``"attested"`` via :attr:`tier`. Under @1/@2 it is metadata about the
+    referenced evidence and NOT part of the signed message
+    (``canonical({content_hash, signer})``).
+
+    ``framework`` is the required @3 field naming the vocabulary of ``item_id``
+    (ADR-0004); ``schema`` records which major the ref was parsed under. It is
+    not a wire field: it selects the signed message (@3 binds subject and tier).
     """
 
     item_id: str
@@ -50,19 +57,28 @@ class EvidenceRef:
     signature: str
     claimed_at: str
     assurance_tier: str | None = None
+    framework: str | None = None
+    schema: str = EVIDENCE_REF_SCHEMA_ID
 
     @property
     def tier(self) -> str:
         """Resolved assurance tier: the declared value, or ``"attested"`` if absent."""
         return self.assurance_tier if self.assurance_tier is not None else DEFAULT_ASSURANCE_TIER
 
+    @property
+    def subject_bound(self) -> bool:
+        """True iff the signature covers the subject (an ``evidence-ref@3`` ref)."""
+        return self.schema == EVIDENCE_REF_SCHEMA_ID_V3
+
     def to_dict(self) -> dict[str, str]:
-        """The 8 frozen contract fields, plus ``assurance_tier`` iff declared.
+        """The 8 frozen contract fields, plus ``framework``/``assurance_tier`` iff set.
 
         Omitting an undeclared tier keeps @1 envelopes byte-identical and the
         content-hash/signing surface unchanged.
         """
         out = {name: getattr(self, name) for name in EVIDENCE_REF_FIELDS}
+        if self.framework is not None:
+            out["framework"] = self.framework
         if self.assurance_tier is not None:
             out["assurance_tier"] = self.assurance_tier
         return out
@@ -97,14 +113,24 @@ def _parse_ref(raw: object, *, schema: str | None) -> EvidenceRef:
         if not _HEX_RE.match(fields[hex_field]):
             raise EvidenceError(f"evidence ref {hex_field} must be lowercase hex (8-128 chars)")
     tier = None
-    if schema == EVIDENCE_REF_SCHEMA_ID_V2:
+    if schema in TIERED_SCHEMA_IDS:
         tier = raw.get("assurance_tier")
         if tier is not None and tier not in ASSURANCE_TIERS:
             raise EvidenceError(
                 "evidence ref assurance_tier must be one of "
                 f"{ASSURANCE_TIERS} or absent, got {tier!r}"
             )
-    return EvidenceRef(**fields, assurance_tier=tier)
+    framework = None
+    if schema == EVIDENCE_REF_SCHEMA_ID_V3:
+        framework = raw.get("framework")
+        if not isinstance(framework, str) or not _FRAMEWORK_RE.match(framework):
+            raise EvidenceError(f"evidence ref framework must match {FRAMEWORK_PATTERN}")
+    return EvidenceRef(
+        **fields,
+        assurance_tier=tier,
+        framework=framework,
+        schema=schema or EVIDENCE_REF_SCHEMA_ID,
+    )
 
 
 def parse_document(doc: object) -> list[EvidenceRef]:
@@ -164,6 +190,12 @@ def build_envelope(
         raise EvidenceError(
             f"unsupported evidence schema: {schema!r} (expected one of {EVIDENCE_REF_SCHEMA_IDS})"
         )
+    entries = [r.to_dict() if isinstance(r, EvidenceRef) else dict(r) for r in refs]
+    for entry in entries:
+        if (schema == EVIDENCE_REF_SCHEMA_ID_V3) != ("framework" in entry):
+            raise EvidenceError(
+                "evidence-ref@3 refs must carry 'framework'; @1/@2 refs must not (ADR-0004)"
+            )
     envelope: dict[str, object] = {"schema": schema}
     if use_case is not None:
         envelope["use_case"] = use_case
@@ -173,7 +205,7 @@ def build_envelope(
         envelope["source_version"] = source_version
     if generated_at is not None:
         envelope["generated_at"] = generated_at
-    envelope["evidence"] = [r.to_dict() if isinstance(r, EvidenceRef) else dict(r) for r in refs]
+    envelope["evidence"] = entries
     return envelope
 
 
@@ -228,23 +260,63 @@ def load_trust_store(source: str | Mapping[str, object]) -> dict[str, dict[str, 
     return normalised
 
 
-def verify_ref(ref: EvidenceRef | Mapping[str, object], trust: Mapping[str, object]) -> bool:
+def _ref_fields(ref: EvidenceRef | Mapping[str, object], schema: str) -> dict | None:
+    if isinstance(ref, EvidenceRef):
+        fields: dict[str, object] = dict(ref.to_dict())
+        schema = ref.schema
+    elif isinstance(ref, Mapping):
+        fields = dict(ref)
+    else:
+        return None
+    fields["_schema"] = schema
+    return fields
+
+
+def _message(fields: Mapping[str, object]) -> bytes | None:
+    """The signed bytes for a ref; the schema decides, never field presence."""
+    content_hash, signer = fields.get("content_hash"), fields.get("signer")
+    if not (isinstance(content_hash, str) and isinstance(signer, str)):
+        return None
+    if fields["_schema"] != EVIDENCE_REF_SCHEMA_ID_V3:
+        return signing_message(content_hash, signer)
+    framework, item_id = fields.get("framework"), fields.get("item_id")
+    tier = fields.get("assurance_tier")
+    if not (isinstance(framework, str) and _FRAMEWORK_RE.match(framework)):
+        return None
+    if not isinstance(item_id, str) or (tier is not None and tier not in ASSURANCE_TIERS):
+        return None
+    return signing_message_v3(content_hash, signer, framework, item_id, tier)
+
+
+def verify_ref(
+    ref: EvidenceRef | Mapping[str, object],
+    trust: Mapping[str, object],
+    *,
+    schema: str = EVIDENCE_REF_SCHEMA_ID,
+    expected_framework: str | None = None,
+) -> bool:
     """Verify a ref's signature against the trust store (fail-closed).
 
     Succeeds if the signature matches **any** key listed for the signer (key
     rotation); an unknown signer, malformed ref, or bad key returns ``False``.
+
+    The message follows the ref's schema: an :class:`EvidenceRef` carries the
+    schema it was parsed under; a bare mapping is read under ``schema`` (default
+    @1), so a ``framework`` key on it never selects the @3 message by itself.
+    With ``expected_framework`` the caller demands subject binding (ADR-0004
+    D4): @1/@2 refs fail, and an @3 ref verifies only for that framework.
     """
-    if isinstance(ref, EvidenceRef):
-        content_hash, signer, signature = ref.content_hash, ref.signer, ref.signature
-    elif isinstance(ref, Mapping):
-        content_hash = ref.get("content_hash")
-        signer = ref.get("signer")
-        signature = ref.get("signature")
-    else:
+    fields = _ref_fields(ref, schema)
+    if fields is None:
         return False
-    if not (
-        isinstance(content_hash, str) and isinstance(signer, str) and isinstance(signature, str)
+    if expected_framework is not None and (
+        fields["_schema"] != EVIDENCE_REF_SCHEMA_ID_V3
+        or fields.get("framework") != expected_framework
     ):
+        return False
+    message = _message(fields)
+    signer, signature = fields.get("signer"), fields.get("signature")
+    if message is None or not isinstance(signature, str):
         return False
     entry = trust.get(signer)
     if entry is None:
@@ -252,5 +324,70 @@ def verify_ref(ref: EvidenceRef | Mapping[str, object], trust: Mapping[str, obje
     norm = (
         entry if isinstance(entry, Mapping) and "keys" in entry else _normalise_entry(signer, entry)
     )
-    verify = verify_ed25519 if norm["alg"] == "ed25519" else verify_hmac
-    return any(verify(content_hash, signer, signature, key) for key in norm["keys"])
+    return any(verify_message(message, signature, key, alg=norm["alg"]) for key in norm["keys"])
+
+
+def reused_refs(refs: Iterable[EvidenceRef]) -> frozenset[tuple[str, str]]:
+    """``(signer, content_hash)`` pairs that @1/@2 refs claim for several items.
+
+    The @1/@2 message does not cover ``item_id``, so one genuine ref can be
+    copied under every item and still verify. A consumer cannot tell which item
+    the producer meant, so such a ref verifies for none of them (ADR-0004 D5,
+    from ikigov-assess). @3 refs are exempt: each claim signs its own subject.
+    The rule works per envelope; claims split across envelopes evade it.
+    """
+    items: dict[tuple[str, str], set[str]] = {}
+    for ref in refs:
+        if not ref.subject_bound:
+            items.setdefault((ref.signer, ref.content_hash), set()).add(ref.item_id)
+    return frozenset(key for key, ids in items.items() if len(ids) > 1)
+
+
+@dataclass(frozen=True)
+class RefResult:
+    """Outcome for one ref of :func:`verify_envelope`."""
+
+    ref: EvidenceRef
+    verified: bool
+    reason: str
+
+
+def verify_envelope(
+    doc: object,
+    trust: Mapping[str, object],
+    *,
+    expected_framework: str | None = None,
+) -> list[RefResult]:
+    """Parse an envelope and verify every ref, applying the full policy.
+
+    Raises :class:`EvidenceError` on a malformed envelope (fail-closed). Per ref:
+    a declared ``optimistic``/``zk`` tier is not verifiable here (ADR-0003 D6);
+    with ``expected_framework`` only @3 refs for that framework can pass
+    (ADR-0004 D4); @1/@2 refs reused across items fail (D5); then the signature.
+    """
+    refs = parse_document(doc)
+    reused = reused_refs(refs)
+    items: dict[tuple[str, str], set[str]] = {}
+    for ref in refs:
+        items.setdefault((ref.signer, ref.content_hash), set()).add(ref.item_id)
+    results = []
+    for ref in refs:
+        key = (ref.signer, ref.content_hash)
+        if ref.tier != DEFAULT_ASSURANCE_TIER:
+            reason = (
+                f"assurance tier {ref.tier!r} is not verifiable by this verifier "
+                "(signature attestation only)"
+            )
+        elif expected_framework is not None and not ref.subject_bound:
+            reason = "subject binding required (evidence-ref@3)"
+        elif expected_framework is not None and ref.framework != expected_framework:
+            reason = f"framework {ref.framework!r} is not {expected_framework!r}"
+        elif key in reused:
+            reason = f"reused under {len(items[key])} items"
+        elif not verify_ref(ref, trust):
+            reason = "signature not verified"
+        else:
+            results.append(RefResult(ref, True, "ok"))
+            continue
+        results.append(RefResult(ref, False, reason))
+    return results

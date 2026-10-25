@@ -1,0 +1,18 @@
+{
+  "schema": "presidio-hardened/evidence-ref@3",
+  "source": "presidio-hardened-ai",
+  "generated_at": "2026-10-25T00:00:00+00:00",
+  "evidence": [
+    {
+      "item_id": "D1",
+      "source": "presidio-hardened-ai",
+      "source_version": "test",
+      "ledger_ref": "ledger:golden",
+      "content_hash": "ca5dc0899a875d6a675d0b7a3b226d8f2119f1a17aa1eec11ec51fd737985974",
+      "signer": "presidio-hardened-ai",
+      "signature": "7b5d1243d95cc3246aa7c9c0e81c6c0af4f88d1c0e8fac3528950f30b013246d1a17d66e0fa43ddb12f5c675deb761ab82df016e1547cd624c09df63505a8b0a",
+      "claimed_at": "2026-10-25T00:00:00+00:00",
+      "framework": "other-checklist"
+    }
+  ]
+}

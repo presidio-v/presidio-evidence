@@ -37,11 +37,14 @@ from ._constants import (
     EVIDENCE_REF_FIELDS,
     EVIDENCE_REF_SCHEMA_ID,
     EVIDENCE_REF_SCHEMA_ID_V2,
+    EVIDENCE_REF_SCHEMA_ID_V3,
     EVIDENCE_REF_SCHEMA_IDS,
+    FRAMEWORK_PATTERN,
     LAYER0_READING_SCHEMA_IDS,
     SIGNING_ALGORITHMS,
     TRUST_STORE_SCHEMA_ID,
 )
+from ._contract import load_schema, schema_ids, schemas_dir, vectors_dir
 from ._errors import EvidenceError
 from ._gate_certificate import (
     GATE_CERTIFICATE_SCHEMA_ID,
@@ -63,29 +66,36 @@ from ._numeric import (
 )
 from ._refs import (
     EvidenceRef,
+    RefResult,
     build_envelope,
     load_evidence,
     load_trust_store,
     parse_document,
+    reused_refs,
+    verify_envelope,
     verify_ref,
 )
 from ._signing import (
     sign_ed25519,
     sign_evidence,
+    sign_evidence_v3,
     sign_hmac,
     signing_message,
+    signing_message_v3,
     verify_ed25519,
     verify_hmac,
 )
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 __all__ = [
     # contract constants (frozen; ADR-0001) + assurance tiers (ADR-0003)
     "EVIDENCE_REF_FIELDS",
     "EVIDENCE_REF_SCHEMA_ID",
     "EVIDENCE_REF_SCHEMA_ID_V2",
+    "EVIDENCE_REF_SCHEMA_ID_V3",
     "EVIDENCE_REF_SCHEMA_IDS",
+    "FRAMEWORK_PATTERN",
     "ASSURANCE_TIERS",
     "DEFAULT_ASSURANCE_TIER",
     "LAYER0_READING_SCHEMA_IDS",
@@ -100,7 +110,9 @@ __all__ = [
     "content_hash",
     # Layer 1
     "signing_message",
+    "signing_message_v3",
     "sign_evidence",
+    "sign_evidence_v3",
     "sign_ed25519",
     "sign_hmac",
     "verify_ed25519",
@@ -112,6 +124,9 @@ __all__ = [
     "build_envelope",
     "load_trust_store",
     "verify_ref",
+    "verify_envelope",
+    "RefResult",
+    "reused_refs",
     # keys (ADR-0001 D3)
     "generate_ed25519_keypair",
     "public_key_hex",
@@ -127,4 +142,9 @@ __all__ = [
     "GATE_CERTIFICATE_SCHEMA_ID",
     "gate_certificate_identity",
     "gate_certificate_signing_bytes",
+    # contract artefacts shipped as package data
+    "schemas_dir",
+    "vectors_dir",
+    "schema_ids",
+    "load_schema",
 ]

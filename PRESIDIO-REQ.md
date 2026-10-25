@@ -2,9 +2,9 @@
 
 Requirement and deliberation ledger (template rule: every future-version deliberation persists here).
 
-## v0.1.0 — ADR + scaffold (session 4, 2026-06-12)
+## v0.1.0 — ADR + scaffold (2026-06-12)
 
-Mandate: development-plan.md §6; session-4-evidence-library-adr.md. Scope discipline: extraction + conformance only, no new capability.
+Mandate: the family development plan. Scope discipline: extraction + conformance only, no new capability.
 
 Requirements:
 
@@ -12,7 +12,7 @@ Requirements:
 - R2 Schema + golden test vectors as the first commit; conformance tests before code — **Delivered:** schemas/ (evidence-ref@1 verbatim-frozen, trust-store@1), vectors/ (generated + byte-stability-checked by scripts/generate_vectors.py), Python suite green; Rust suite written, first run pending toolchain (see Open).
 - R3 CI to family standard (SAST, coverage gate, SBOM) — **Delivered:** ci.yml (ruff incl. S rules, pytest --cov fail_under=100, pip-audit, CycloneDX SBOM artifact, vector --check), codeql.yml (public-gated, family precedent), ci-rust.yml (manual until first green run, ci-zk precedent), dependabot (pip/cargo/actions).
 - R4 Migration map per consumer — **Delivered:** docs/MIGRATION.md (ikigov → hardened-ai → x402 → treasury schema-only).
-- R5 Repo private by default — **Delivered:** "Private :: Do Not Upload" classifier + `publish = false` guard against accidental publication.
+- R5 Repo private by default — **Delivered:** "Private :: Do Not Upload" classifier + `publish = false` guard against accidental publication. **Superseded by v0.5.0:** the repository is public and the package is on PyPI (ADR-0001 D6 amendment).
 
 Scoping decisions:
 
@@ -33,9 +33,9 @@ Rejected "while we're at it" items (recorded, not built):
 - [x] Founder signed ADR-0001 (Accepted, 2026-06-12).
 - [x] Founder signed ADR-0002 (provenance-parents convention, Accepted 2026-07-02).
 - [x] Append the parents-bearing golden vector (R1) **and** the workshop-attestation vector (T-B4 R5) — **Delivered 2026-07-02**, both suites green (ADR-0001 D2: Python 81 passed/1 skipped, 100% coverage; Rust 9/9 conformance). Landed together with the Rust lane's first green run (gate above); no founder waiver needed.
-- [x] Visibility decision recorded 2026-07-04: keep `presidio-evidence` private and defer x402 code movement (migration step 3) for now; closes ADR-0001 D6 + action item 4.
+- [x] Visibility decision recorded 2026-07-04: keep `presidio-evidence` private and defer x402 code movement (migration step 3) for now; closes ADR-0001 D6 + action item 4. **Superseded 2026-10-25:** public from v0.5.0 (ADR-0001 D6 amendment); the x402 deferral now follows the x402 roadmap.
 - [x] Rust lane first green run (2026-07-02): full lane green on a Rust-equipped runner — `cargo fmt --check` OK, `cargo clippy --all-targets -- -D warnings` clean, `cargo test --locked` 6/6 conformance tests pass (canonical-json, ed25519 golden + tamper-fail-closed, hmac golden, envelope end-to-end, schema constants), no divergence from committed vectors. Toolchain: rustc/cargo 1.95.0 (stable). ci-rust.yml already carries push/PR triggers (committed 2026-06-12, ADR-0001 item 6); no promotion change needed — this run closes the "awaits first green run" gate that R3/this list still showed open.
-- [ ] Session 3 review trigger: if the x402 OEM-kit session changes the screening evidence surface, revisit ADR-0001 D1/D4 before Q4 extraction.
+- [ ] Review trigger: if the x402 OEM-kit work changes the screening evidence surface, revisit ADR-0001 D1/D4 before Q4 extraction.
 
 ## v0.2.0 — extraction (delivered)
 
@@ -55,7 +55,7 @@ Deferred to a follow-up (not blocking consumers, which vendor their own copies t
 x402 imports the library at the screening pipeline boundary (**gated** on a founder decision on the x402 roadmap); Rust crate implements Layer 0 for treasury's schema conformance.
 
 - R1 **Rust Layer 0 — Delivered 2026-09-09.** `rust/src/lib.rs` ships `canonical_string` / `canonical_bytes` (strict profile: sorted keys, compact, UTF-8, floats rejected at any depth), `sha256_hex` / `content_hash`, and the signer-bound `signing_message`, plus a fail-closed `CanonicalError` (`FloatRejected` | `Serialize`). Extracted verbatim from `rust/tests/conformance.rs`, where the vectors had already pinned it byte-for-byte; the conformance suite now exercises the crate's public API and keeps only signing/verification test-local (no signature layer in the crate — ADR-0001 D1, treasury is keyless by design). Runtime dependencies: `serde_json` (explicitly **without** `preserve_order` — sorted keys are the contract) and `sha2`; hex encoding is inline, so `hex` stays a dev-dependency. Gate: `cargo fmt --check` OK, `cargo clippy --all-targets -- -D warnings` clean, `cargo test` 5 unit + 31 conformance passed, `cargo doc` warning-free; Python suite and vectors untouched (`--check` OK). Crate bumped to 0.2.0 with the v0.3.0 release; treasury can now take the crate for Layer-0 helpers per MIGRATION step 4.
-- R2 x402 binding — **blocked** (x402 roadmap); moved to v0.5.0 (v0.4.0 is ADR-0005/ADR-0006) so the delivered scope could ship. x402 conforms via `vectors/slo-reading/` until then.
+- R2 x402 binding — **blocked** (x402 roadmap); moved out of v0.3.0 so the delivered scope could ship. x402 conforms via `vectors/slo-reading/` until then.
 - R3 **ADR-0001 D3/D4 helpers — Delivered 2026-09-09** (contract debt: the accepted ADR described them as shipped). D3 in `_keys.py`: `generate_ed25519_keypair`, `public_key_hex` (derivation for trust-store rotation), `load_private_key(path | env=)` — open-then-`fstat` (no TOCTOU), regular file only, mode must carry no group/other bits (`0600`/`0400`), bounded read, 64-hex validation, whitespace trimmed / hex lowercased, **error messages never carry key material**; `write_private_key` creates with `O_EXCL` at `0600` (umask-independent, refuses overwrite). D4 in `_cli.py` (`presidio-evidence`, also `python -m presidio_evidence`): `verify ENVELOPE --trust STORE` exits **0 iff every ref verifies**, 1 on any failure incl. malformed/unreadable input (fail-closed), 2 on usage error (argparse); refs declaring `optimistic`/`zk` fail closed as *unverified-by-this-verifier* (ADR-0003 D6). `keygen --out PATH [--signer ID]` writes the private key to a new `0600` file and prints only the public half (bare hex, or a `trust-store@1` entry). Tests: `tests/test_keys.py`, `tests/test_cli.py`; coverage gate stays at 100%. Not built: `sign`/`hash` subcommands and a trust-store editing CLI (L-EV-4) — not in the ADR text; recorded here as candidates, not scope.
 
 ## v0.4.0 — ADR-0005 numeric encoding + ADR-0006 gate-certificate identity (released 2026-10-18)
@@ -65,9 +65,42 @@ Both ADRs accepted by the founder on 2026-10-18 (#47). Additive only: no publish
 - R1 **ADR-0005 numeric payload encoding — Delivered.** `encode_decimal`, `is_decimal_string`, `decimal_pattern`, `UNBOUNDED_SENTINEL`; vectors under `vectors/numeric-encoding/`. `training-run@1` and `energy-reading@1` energy fields keep their shipped form (grandfather clause N8).
 - R2 **ADR-0006 gate-certificate@1 identity — Delivered.** `gate_certificate_identity`, `gate_certificate_signing_bytes`, `GATE_CERTIFICATE_SCHEMA_ID`; vectors under `vectors/gate-certificate/`, cross-checked against ikigov-assess v0.28.0.
 - R3 Schemas `training-run.v1.schema.json` and `gate-certificate.v1.schema.json` describe what shipped producers already emit. Rust conformance covers both vector sets; crate stays at 0.2.0 (no crate API change).
-- R4 x402 binding — **blocked** (x402 roadmap); planned for v0.5.0.
+- R4 x402 binding — **blocked** (x402 roadmap); not in v0.5.0 either.
 
-## Provenance-parents convention (deliberated 2026-07-02, session: suite strategy)
+## v0.5.0 — first public release (2026-10-25)
+
+Founder decision 2026-10-25: the repository goes public (ADR-0001 D6 amendment).
+The development history was published with internal correspondence removed.
+
+- R1 **ADR-0004 `evidence-ref@3` — Delivered (ADR Proposed, founder sign-off with
+  the release).** Security fix to a demonstrated fail-open (ikigov-assess audit
+  2026-09-30, C-1): the @1/@2 signature does not cover the item, so one genuine ref
+  copied under 25 checklist items opened every gate. @3 adds a required
+  `framework` and signs `canonical({assurance_tier, content_hash, framework,
+  item_id, signer})`; the envelope schema selects the message, never field
+  presence. `verify_ref(..., expected_framework=)`, `verify_envelope`, the
+  `reused_refs` floor for @1/@2 (ikigov's rule, now shared) and CLI
+  `--require-subject-binding FRAMEWORK`. Rust: `signing_message_v3`, crate 0.3.0.
+  Vectors: `evidence-ref-v3/` (with `expectations.json`, asserted by both lanes),
+  `signing/*-golden-v3.json`, `evidence-ref-v2/reused-ref.json`. Design review
+  before implementation moved the tier into the signed message (stripping a
+  declared tier would otherwise pass an attested-only verifier) and added the
+  framework check on the verify side.
+- R2 **Contract trees as package data — Delivered.** The wheel carries `schemas/`
+  and `vectors/` under `presidio_evidence/_contract/`; `schemas_dir()`,
+  `vectors_dir()`, `schema_ids()`, `load_schema()`. A source checkout reads the
+  repository root.
+- R3 **scoutsuite consumer vector — Delivered** (issue #3). `vectors/cloud-posture/`:
+  clean AWS controls for IKI-Gov O5 and T5 as scoutsuite 0.30.0 builds them, with
+  the 0.29.x legacy signatures pinned as must-fail. Cross-checked at creation
+  against scoutsuite's own `claim_subject`, `content_hash`, `sign` and `verify_ref`.
+- R4 Publication: `Private :: Do Not Upload` dropped; PyPI as `presidio-evidence`;
+  crate stays `publish = false`. CLI behaviour change: an @1/@2 envelope that claims
+  one ref for several items now fails (ADR-0004 D5).
+- Not in scope: #2 (schema tightening, producer-coordinated), `walk_parents`
+  (L-EV-5), trust-store CLI (L-EV-4), x402 binding.
+
+## Provenance-parents convention (deliberated 2026-07-02, suite strategy)
 
 Strategy context: the suite claim — classify (eai-classificator → ikigov) → govern (ikigov gates) → build/train (arch-translucency training domain) → operate (pat posture, x402) → **prove** — is only checkable if the *relationships between* evidence payloads are themselves evidence. Decision drafted as **ADR-0002 (Proposed)**: any family payload MAY carry `parents: [<content_hash>, …]` **inside** its `attested_content` — lineage inside the signed bytes, envelope `evidence-ref@1` untouched (stays frozen per ADR-0001 D5). Family hex discipline for entries; fail-closed producer validation; omitted when empty; acyclic by construction (a hash cannot reference a future payload). Consumer graph-walk semantics stay out of library scope for now.
 
@@ -110,9 +143,9 @@ Requirements (gated on founder sign-off of ADR-0003):
 
 ## Consumer posture note — ikigov import migration blocked by visibility (2026-09-17)
 
-Recorded during the CJ ↔ ikigov synergies session. `docs/MIGRATION.md` step 1
-assumed ikigov-assess could add this library as a dependency now (visibility decision:
-"the other consumers may use the private library now"). It cannot: ikigov
+Recorded during the CJ ↔ ikigov synergies review. `docs/MIGRATION.md` step 1
+assumed ikigov-assess could add this library as a dependency now (the visibility
+decision: "the other consumers may use the private library now"). It cannot: ikigov
 ships on PyPI and this package is `Private :: Do Not Upload`, so the dependency
 would break every public install. Step 1 is re-sequenced to after the
 library goes public, alongside step 3; until then ikigov conforms
@@ -122,9 +155,10 @@ tier semantics of ADR-0003 consumer-side, honouring declared tiers only under `@
 and treating an `@1` extra tier as inert, exactly as
 `vectors/evidence-ref-v2/valid-v1-with-extra-tier` pins). No schema, vector or code
 change here; MIGRATION.md carries the amendment. **Founder gate unchanged:** any
-visibility change remains a founder-signed release step.
+visibility change remains a founder-signed release step. **Resolved by v0.5.0**, the
+first release on PyPI: step 1 can ship.
 
-Two follow-ons this session identified for the roadmap, neither started:
+Two follow-ons this review identified for the roadmap:
 
 - **`capability-grant@1` golden vector.** ikigov's governance-ceiling design (its
   T-B6 Decision 6) derives an x402 capability grant from a `G3 OPEN` gate

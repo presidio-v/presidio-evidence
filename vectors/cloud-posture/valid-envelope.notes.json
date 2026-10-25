@@ -1,0 +1,73 @@
+{
+  "description": "Companion to cloud-posture/valid-envelope.json. The scoutsuite consumer vector: clean AWS controls mapped to IKI-Gov items O5 and T5, one Ed25519-signed evidence-ref@2 ref each, built the way presidio-hardened-scoutsuite 0.30.0 build_evidence builds them (claim_subject -> content_hash, family signing message). legacy_signatures are what 0.29.x would have signed (every ref field but the signature); they must NOT verify.",
+  "claims": {
+    "O5": {
+      "claim_subject": {
+        "item_id": "O5",
+        "provider": "aws",
+        "rules": [
+          "cloudtrail-no-encryption-with-kms.json",
+          "cloudtrail-no-global-services-logging.json",
+          "cloudtrail-no-log-file-validation.json",
+          "cloudtrail-no-logging.json",
+          "cloudtrail-not-configured.json",
+          "config-recorder-not-configured.json",
+          "s3-bucket-no-logging.json",
+          "vpc-subnet-without-flow-log.json"
+        ],
+        "status": "clean",
+        "report_manifest_digest": "4988a60ec5134c328bcc92a1100575a9ad3398a1f145b7414fe9967a390d3372"
+      },
+      "expected_content_hash": "94def9d985b61815ac3665405322fbac29e422456d7f4823cd0356b13db43d0b"
+    },
+    "T5": {
+      "claim_subject": {
+        "item_id": "T5",
+        "provider": "aws",
+        "rules": [
+          "ec2-default-security-group-in-use.json",
+          "ec2-default-security-group-with-rules.json",
+          "ec2-ebs-default-encryption-disabled.json",
+          "ec2-ebs-volume-not-encrypted.json",
+          "ec2-instance-with-user-data-secrets.json",
+          "ec2-security-group-opens-all-ports-to-all.json",
+          "ec2-security-group-opens-known-port-to-all.json",
+          "iam-inline-policy-allows-NotActions.json",
+          "iam-managed-policy-allows-full-privileges.json",
+          "iam-password-policy-minimum-length.json",
+          "iam-password-policy-no-expiration.json",
+          "iam-password-policy-reuse-enabled.json",
+          "iam-root-account-no-hardware-mfa.json",
+          "iam-root-account-no-mfa.json",
+          "iam-root-account-used-recently.json",
+          "iam-root-account-with-active-keys.json",
+          "iam-user-no-key-rotation.json",
+          "iam-user-with-multiple-access-keys.json",
+          "iam-user-with-password-and-key.json",
+          "iam-user-without-mfa.json",
+          "kms-cmk-rotation-disabled.json",
+          "rds-instance-publicly-accessible.json",
+          "s3-bucket-allowing-cleartext.json",
+          "s3-bucket-no-default-encryption.json",
+          "s3-bucket-no-versioning.json",
+          "s3-bucket-world-acl.json"
+        ],
+        "status": "clean",
+        "report_manifest_digest": "4988a60ec5134c328bcc92a1100575a9ad3398a1f145b7414fe9967a390d3372"
+      },
+      "expected_content_hash": "e6121822d01805fca2fab561c41ff31ec595407300f951c98f5d9049ea39f206"
+    }
+  },
+  "report_manifest_digest": "4988a60ec5134c328bcc92a1100575a9ad3398a1f145b7414fe9967a390d3372",
+  "verifies_with_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "trust_store": {
+    "presidio-hardened-scoutsuite": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    }
+  },
+  "legacy_signatures": {
+    "O5": "f308127ed5eca7b8add3488949314a1c9bbf72b01002126061b6be4927e0fd88b0b0a58c1ac6c54e5a5879cfbe9e2f91d0b5af61dbb5cbc89c8de0cc466c2109",
+    "T5": "8f754c037eb343d56fb4101bf5e60db2683c2a7724a8518b5dbee4190d866d2e4bb5783026f0106956daa57dc0298d48aabaa7198f314373ade0dd5bca75e406"
+  }
+}

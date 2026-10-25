@@ -1,0 +1,97 @@
+{
+  "description": "Expectations for every evidence-ref-v3 vector, asserted identically by the Python and Rust lanes. signature_verifies: the ref's signature under the message its envelope schema selects. verifies_for_framework: the same with expected_framework 'iki-gov' (subject binding demanded). envelope_verifies: verify_envelope without a framework demand, i.e. the CLI default (tier, reuse floor, signature).",
+  "expected_framework": "iki-gov",
+  "trust_store": {
+    "presidio-hardened-ai": {
+      "alg": "ed25519",
+      "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+    },
+    "presidio-hmac-producer": {
+      "alg": "hmac-sha256",
+      "key": "shared-key"
+    }
+  },
+  "files": {
+    "valid-envelope.json": [
+      {
+        "signature_verifies": true,
+        "verifies_for_framework": true,
+        "envelope_verifies": true
+      },
+      {
+        "signature_verifies": true,
+        "verifies_for_framework": true,
+        "envelope_verifies": true
+      }
+    ],
+    "valid-tier-optimistic.json": [
+      {
+        "signature_verifies": true,
+        "verifies_for_framework": true,
+        "envelope_verifies": false,
+        "envelope_reason": "assurance tier 'optimistic'"
+      }
+    ],
+    "valid-same-content-two-items.json": [
+      {
+        "signature_verifies": true,
+        "verifies_for_framework": true,
+        "envelope_verifies": true
+      },
+      {
+        "signature_verifies": true,
+        "verifies_for_framework": true,
+        "envelope_verifies": true
+      }
+    ],
+    "valid-signature-foreign-framework.json": [
+      {
+        "signature_verifies": true,
+        "verifies_for_framework": false,
+        "envelope_verifies": true
+      }
+    ],
+    "tampered-relabelled-item.json": [
+      {
+        "signature_verifies": false,
+        "verifies_for_framework": false,
+        "envelope_verifies": false
+      }
+    ],
+    "tampered-relabelled-framework.json": [
+      {
+        "signature_verifies": false,
+        "verifies_for_framework": false,
+        "envelope_verifies": false
+      }
+    ],
+    "tampered-relabelled-tier.json": [
+      {
+        "signature_verifies": false,
+        "verifies_for_framework": false,
+        "envelope_verifies": false
+      }
+    ],
+    "tampered-v2-signature-as-v3.json": [
+      {
+        "signature_verifies": false,
+        "verifies_for_framework": false,
+        "envelope_verifies": false
+      }
+    ],
+    "tampered-v3-signature-as-v2.json": [
+      {
+        "signature_verifies": false,
+        "verifies_for_framework": false,
+        "envelope_verifies": false
+      }
+    ],
+    "tampered-v3-refs-schema-absent.json": [
+      {
+        "signature_verifies": false,
+        "verifies_for_framework": false,
+        "envelope_verifies": false
+      }
+    ]
+  }
+}

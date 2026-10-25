@@ -2,7 +2,10 @@
 
 ``verify`` checks every ref in an evidence envelope against a trust store and
 exits **0 only if every ref verifies**, else **1** — including on any malformed
-input, unknown signer, or unreadable file (fail-closed, never fail-open).
+input, unknown signer, or unreadable file (fail-closed, never fail-open). An
+@1/@2 ref claimed for several items fails for all of them (ADR-0004 D5), and
+``--require-subject-binding FRAMEWORK`` accepts only ``evidence-ref@3`` refs
+signed for that framework (D4).
 A ref that declares an ``optimistic`` / ``zk`` assurance tier (ADR-0003) is
 *unverified-by-this-verifier*: this CLI only knows how to check signature
 attestations, so per ADR-0003 D6 it fails closed on those tiers even when the
@@ -21,10 +24,9 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from ._constants import DEFAULT_ASSURANCE_TIER
 from ._errors import EvidenceError
 from ._keys import generate_ed25519_keypair, write_private_key
-from ._refs import load_evidence, load_trust_store, verify_ref
+from ._refs import load_trust_store, verify_envelope
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -37,27 +39,27 @@ def _read_text(path: str) -> str:
         raise EvidenceError(f"cannot read {path}: {exc.strerror or exc}") from exc
 
 
+def _load_json(text: str, label: str) -> object:
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise EvidenceError(f"invalid {label} JSON: {exc.msg}") from exc
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
-    refs = load_evidence(_read_text(args.envelope))
+    doc = _load_json(_read_text(args.envelope), "evidence")
     trust = load_trust_store(_read_text(args.trust))
-    if not refs:
+    results = verify_envelope(doc, trust, expected_framework=args.require_subject_binding)
+    if not results:
         print("FAIL: envelope carries no evidence refs", file=sys.stderr)
         return EXIT_FAIL
-    ok = True
-    for ref in refs:
-        if ref.tier != DEFAULT_ASSURANCE_TIER:
-            ok = False
-            print(
-                f"FAIL {ref.item_id} {ref.signer}: assurance tier {ref.tier!r} "
-                "is not verifiable by this verifier (signature attestation only)",
-                file=sys.stderr,
-            )
-        elif verify_ref(ref, trust):
+    for result in results:
+        ref = result.ref
+        if result.verified:
             print(f"ok   {ref.item_id} {ref.signer}")
         else:
-            ok = False
-            print(f"FAIL {ref.item_id} {ref.signer}: signature not verified", file=sys.stderr)
-    return EXIT_OK if ok else EXIT_FAIL
+            print(f"FAIL {ref.item_id} {ref.signer}: {result.reason}", file=sys.stderr)
+    return EXIT_OK if all(r.verified for r in results) else EXIT_FAIL
 
 
 def cmd_keygen(args: argparse.Namespace) -> int:
@@ -78,8 +80,13 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     verify = sub.add_parser("verify", help="verify every ref in an envelope; exit 0 iff all verify")
-    verify.add_argument("envelope", help="evidence-ref@1/@2 envelope JSON file")
+    verify.add_argument("envelope", help="evidence-ref@1/@2/@3 envelope JSON file")
     verify.add_argument("--trust", required=True, help="trust-store@1 JSON file")
+    verify.add_argument(
+        "--require-subject-binding",
+        metavar="FRAMEWORK",
+        help="accept only evidence-ref@3 refs signed for this framework (ADR-0004)",
+    )
     verify.set_defaults(func=cmd_verify)
 
     keygen = sub.add_parser(

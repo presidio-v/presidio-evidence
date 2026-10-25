@@ -10,7 +10,9 @@
 //!   (sorted keys, compact separators, UTF-8 preserved, **floats rejected**).
 //! * [`sha256_hex`] / [`content_hash`] — SHA-256 content addressing.
 //! * [`signing_message`] — the signer-bound Layer-1 message
-//!   `canonical({content_hash, signer})`; this crate does not sign or verify
+//!   `canonical({content_hash, signer})` of `evidence-ref@1`/`@2`, and
+//!   [`signing_message_v3`], the subject- and tier-bound message of
+//!   `evidence-ref@3` (ADR-0004). This crate does not sign or verify
 //!   (treasury is keyless by design — dual control instead, ADR-0001 D1).
 //!
 //! Canonicalization note: `serde_json::Value` objects are `BTreeMap`-backed
@@ -32,8 +34,19 @@ pub const EVIDENCE_REF_SCHEMA_ID: &str = "presidio-hardened/evidence-ref@1";
 /// unchanged from @1.
 pub const EVIDENCE_REF_SCHEMA_ID_V2: &str = "presidio-hardened/evidence-ref@2";
 
+/// Subject-binding revision (ADR-0004): each ref names its `framework`, and the
+/// signature covers `{assurance_tier, content_hash, framework, item_id, signer}`.
+pub const EVIDENCE_REF_SCHEMA_ID_V3: &str = "presidio-hardened/evidence-ref@3";
+
 /// Schema ids the verifier accepts (fail-closed on any other; ADR-0001 D4/D5).
-pub const EVIDENCE_REF_SCHEMA_IDS: [&str; 2] = [EVIDENCE_REF_SCHEMA_ID, EVIDENCE_REF_SCHEMA_ID_V2];
+pub const EVIDENCE_REF_SCHEMA_IDS: [&str; 3] = [
+    EVIDENCE_REF_SCHEMA_ID,
+    EVIDENCE_REF_SCHEMA_ID_V2,
+    EVIDENCE_REF_SCHEMA_ID_V3,
+];
+
+/// An @3 `framework` id: one fixed item vocabulary, never reused (ADR-0004 D1).
+pub const FRAMEWORK_PATTERN: &str = "^[a-z0-9][a-z0-9._-]{0,63}$";
 
 /// Assurance tiers (ADR-0003), default first: signature-attested / trusted
 /// execution, bonded optimistic assertion, succinct zero-knowledge proof.
@@ -150,6 +163,29 @@ pub fn signing_message(content_hash: &str, signer: &str) -> String {
     canonical_string(&payload).expect("string-only payload is always canonicalizable")
 }
 
+/// The `evidence-ref@3` message (ADR-0004 D2): subject- and tier-bound,
+/// `canonical({"assurance_tier", "content_hash", "framework", "item_id",
+/// "signer"})`. `assurance_tier` is the resolved tier; `None` means
+/// [`DEFAULT_ASSURANCE_TIER`], exactly as an absent wire field does. Checking
+/// the tier against [`ASSURANCE_TIERS`] is the verifier's job, as it is for
+/// every other field.
+pub fn signing_message_v3(
+    content_hash: &str,
+    signer: &str,
+    framework: &str,
+    item_id: &str,
+    assurance_tier: Option<&str>,
+) -> String {
+    let payload = serde_json::json!({
+        "assurance_tier": assurance_tier.unwrap_or(DEFAULT_ASSURANCE_TIER),
+        "content_hash": content_hash,
+        "framework": framework,
+        "item_id": item_id,
+        "signer": signer,
+    });
+    canonical_string(&payload).expect("string-only payload is always canonicalizable")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -202,6 +238,22 @@ mod tests {
             r#"{"content_hash":"ab","signer":"s"}"#
         );
         assert_ne!(signing_message("ab", "s"), signing_message("ab", "t"));
+    }
+
+    #[test]
+    fn signing_message_v3_binds_subject_and_resolved_tier() {
+        assert_eq!(
+            signing_message_v3("ab", "s", "iki-gov", "D1", None),
+            r#"{"assurance_tier":"attested","content_hash":"ab","framework":"iki-gov","item_id":"D1","signer":"s"}"#
+        );
+        assert_eq!(
+            signing_message_v3("ab", "s", "iki-gov", "D1", None),
+            signing_message_v3("ab", "s", "iki-gov", "D1", Some("attested"))
+        );
+        assert_ne!(
+            signing_message_v3("ab", "s", "iki-gov", "D1", None),
+            signing_message_v3("ab", "s", "iki-gov", "D2", None)
+        );
     }
 
     #[test]

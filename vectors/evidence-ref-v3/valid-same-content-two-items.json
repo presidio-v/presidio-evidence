@@ -1,0 +1,29 @@
+{
+  "schema": "presidio-hardened/evidence-ref@3",
+  "source": "presidio-hardened-ai",
+  "generated_at": "2026-10-25T00:00:00+00:00",
+  "evidence": [
+    {
+      "item_id": "D1",
+      "source": "presidio-hardened-ai",
+      "source_version": "test",
+      "ledger_ref": "ledger:golden",
+      "content_hash": "ca5dc0899a875d6a675d0b7a3b226d8f2119f1a17aa1eec11ec51fd737985974",
+      "signer": "presidio-hardened-ai",
+      "signature": "7d0f4ec74fb34b7b6f7710eaa19e20171415074078cdd7a6dd310147c0394093123c5d6191c1d8e2870271ffd136dec4a676db45f96be297d5a3a48f3a92b707",
+      "claimed_at": "2026-10-25T00:00:00+00:00",
+      "framework": "iki-gov"
+    },
+    {
+      "item_id": "D2",
+      "source": "presidio-hardened-ai",
+      "source_version": "test",
+      "ledger_ref": "ledger:golden",
+      "content_hash": "ca5dc0899a875d6a675d0b7a3b226d8f2119f1a17aa1eec11ec51fd737985974",
+      "signer": "presidio-hardened-ai",
+      "signature": "406457d5f4ca8ed803ed806587f2dead9a0dee687e7b00a7cfe2cb7b198cc0b14f15351ea086804109146a6b2e2c43975ea5b287b7e59939d28d835847319f07",
+      "claimed_at": "2026-10-25T00:00:00+00:00",
+      "framework": "iki-gov"
+    }
+  ]
+}

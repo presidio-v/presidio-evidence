@@ -993,6 +993,8 @@ def build() -> dict[pathlib.Path, dict]:
 
     out.update(_numeric_encoding_vectors())
     out.update(_gate_certificate_vectors(sk, pub, ATX_SIGNER, ASSESSOR_SIGNER))
+    out.update(_cloud_posture_vectors(sk, pub))
+    out.update(_v3_vectors(sk, pub))
 
     return out
 
@@ -1278,6 +1280,307 @@ def _gate_certificate_vectors(
             "parent_vector": "vectors/gate-certificate/valid-certificate.json",
             "verifies_with_public_key_hex": pub,
             "trust_store": {atx_signer: {"alg": "ed25519", "public_key": pub}},
+        },
+    }
+
+
+V3_SCHEMA = "presidio-hardened/evidence-ref@3"
+V3_FRAMEWORK = "iki-gov"
+V3_HMAC_SIGNER = "presidio-hmac-producer"
+
+
+def _v3_message(ch: str, signer: str, framework: str, item_id: str, tier: str | None) -> bytes:
+    """ADR-0004 D2, written out independently of the library."""
+    return cb(
+        {
+            "assurance_tier": tier or "attested",
+            "content_hash": ch,
+            "framework": framework,
+            "item_id": item_id,
+            "signer": signer,
+        }
+    )
+
+
+def _v3_vectors(sk, pub: str) -> dict[pathlib.Path, dict]:
+    """evidence-ref@3 (ADR-0004): subject- and tier-bound signatures."""
+    d = V / "evidence-ref-v3"
+    ch = hashlib.sha256(cb({"item_id": "D1", "status": "evidence-present"})).hexdigest()
+    claimed = "2026-10-25T00:00:00+00:00"
+
+    def ref(item, *, framework=V3_FRAMEWORK, tier=None, signer=SIGNER, alg="ed25519", ch=ch):
+        message = _v3_message(ch, signer, framework, item, tier)
+        if alg == "ed25519":
+            sig = sk.sign(message).hex()
+        else:
+            sig = hmaclib.new(KEY.encode(), message, hashlib.sha256).hexdigest()
+        out = {
+            "item_id": item,
+            "source": "presidio-hardened-ai",
+            "source_version": "test",
+            "ledger_ref": "ledger:golden",
+            "content_hash": ch,
+            "signer": signer,
+            "signature": sig,
+            "claimed_at": claimed,
+            "framework": framework,
+        }
+        if tier is not None:
+            out["assurance_tier"] = tier
+        return out
+
+    def env(refs, schema=V3_SCHEMA):
+        doc = {"schema": schema, "source": "presidio-hardened-ai", "generated_at": claimed}
+        if schema is None:
+            del doc["schema"]
+        doc["evidence"] = refs
+        return doc
+
+    def strip(r, *keys):
+        return {k: v for k, v in r.items() if k not in keys}
+
+    d1 = ref("D1")
+    d2_hmac = ref("D2", signer=V3_HMAC_SIGNER, alg="hmac-sha256")
+    optimistic = ref("D3", tier="optimistic")
+    v2_golden = {
+        "item_id": "D1",
+        "source": "presidio-hardened-ai",
+        "source_version": "test",
+        "ledger_ref": "ledger:golden",
+        "content_hash": CH,
+        "signer": SIGNER,
+        "signature": EXPECTED_SIG,
+        "claimed_at": claimed,
+    }
+
+    files = {
+        "valid-envelope.json": env([d1, d2_hmac]),
+        "valid-tier-optimistic.json": env([optimistic]),
+        "valid-same-content-two-items.json": env([d1, ref("D2")]),
+        "valid-signature-foreign-framework.json": env([ref("D1", framework="other-checklist")]),
+        "tampered-relabelled-item.json": env([dict(d1, item_id="D4")]),
+        "tampered-relabelled-framework.json": env([dict(d1, framework="iki-gov-2")]),
+        "tampered-relabelled-tier.json": env([strip(optimistic, "assurance_tier")]),
+        "tampered-v2-signature-as-v3.json": env([dict(v2_golden, framework=V3_FRAMEWORK)]),
+        "tampered-v3-signature-as-v2.json": env(
+            [strip(d1, "framework")], schema="presidio-hardened/evidence-ref@2"
+        ),
+        "tampered-v3-refs-schema-absent.json": env([d1], schema=None),
+    }
+    out: dict[pathlib.Path, dict] = {d / name: doc for name, doc in files.items()}
+    out[d / "invalid-missing-framework.json"] = {
+        "_reason": "@3 requires 'framework' on every ref",
+        "document": env([strip(d1, "framework")]),
+    }
+    out[d / "invalid-framework-pattern.json"] = {
+        "_reason": "framework must match ^[a-z0-9][a-z0-9._-]{0,63}$",
+        "document": env([dict(d1, framework="IKI Gov")]),
+    }
+
+    def expect(sig, framework_ok, envelope_ok, reason=None):
+        row = {
+            "signature_verifies": sig,
+            "verifies_for_framework": framework_ok,
+            "envelope_verifies": envelope_ok,
+        }
+        if reason:
+            row["envelope_reason"] = reason
+        return row
+
+    out[d / "expectations.json"] = {
+        "description": (
+            "Expectations for every evidence-ref-v3 vector, asserted identically by "
+            "the Python and Rust lanes. signature_verifies: the ref's signature under "
+            "the message its envelope schema selects. verifies_for_framework: the same "
+            "with expected_framework 'iki-gov' (subject binding demanded). "
+            "envelope_verifies: verify_envelope without a framework demand, i.e. the "
+            "CLI default (tier, reuse floor, signature)."
+        ),
+        "expected_framework": V3_FRAMEWORK,
+        "trust_store": {
+            SIGNER: {"alg": "ed25519", "public_key": pub},
+            V3_HMAC_SIGNER: {"alg": "hmac-sha256", "key": KEY},
+        },
+        "files": {
+            "valid-envelope.json": [expect(True, True, True), expect(True, True, True)],
+            "valid-tier-optimistic.json": [
+                expect(True, True, False, "assurance tier 'optimistic'")
+            ],
+            "valid-same-content-two-items.json": [
+                expect(True, True, True),
+                expect(True, True, True),
+            ],
+            "valid-signature-foreign-framework.json": [expect(True, False, True)],
+            "tampered-relabelled-item.json": [expect(False, False, False)],
+            "tampered-relabelled-framework.json": [expect(False, False, False)],
+            "tampered-relabelled-tier.json": [expect(False, False, False)],
+            "tampered-v2-signature-as-v3.json": [expect(False, False, False)],
+            "tampered-v3-signature-as-v2.json": [expect(False, False, False)],
+            "tampered-v3-refs-schema-absent.json": [expect(False, False, False)],
+        },
+    }
+
+    escaped_signer = 'presidio "quoted", signer'
+    for alg, name in (
+        ("ed25519", "ed25519-golden-v3.json"),
+        ("hmac-sha256", "hmac-sha256-golden-v3.json"),
+    ):
+        cases = []
+        for signer, tier in ((SIGNER, None), (SIGNER, "zk"), (escaped_signer, None)):
+            message = _v3_message(CH, signer, V3_FRAMEWORK, "D1", tier)
+            if alg == "ed25519":
+                sig = sk.sign(message).hex()
+            else:
+                sig = hmaclib.new(KEY.encode(), message, hashlib.sha256).hexdigest()
+            cases.append(
+                {
+                    "content_hash": CH,
+                    "signer": signer,
+                    "framework": V3_FRAMEWORK,
+                    "item_id": "D1",
+                    "assurance_tier": tier,
+                    "message_canonical": message.decode(),
+                    "signature_hex": sig,
+                }
+            )
+        key_fields = (
+            {"private_key_hex": PRIV, "public_key_hex": pub} if alg == "ed25519" else {"key": KEY}
+        )
+        out[V / "signing" / name] = {
+            "description": (
+                "evidence-ref@3 golden signatures (ADR-0004 D2): the message is "
+                "canonical({assurance_tier, content_hash, framework, item_id, signer}) "
+                "with assurance_tier resolved ('attested' when absent, shown as null "
+                "here). The quoted signer pins canonical escaping, so a 5-key @3 "
+                "message can never collide with a 2-key @1/@2 message."
+            ),
+            "algorithm": alg,
+            **key_fields,
+            "cases": cases,
+        }
+
+    reused = env(
+        [dict(v2_golden, item_id="D1"), dict(v2_golden, item_id="D2")],
+        schema="presidio-hardened/evidence-ref@2",
+    )
+    out[V / "evidence-ref-v2/reused-ref.json"] = reused
+    out[V / "evidence-ref-v2/reused-ref.notes.json"] = {
+        "description": (
+            "The ADR-0004 D5 floor for @1/@2: one genuine golden ref cloned under items "
+            "D1 and D2. Each copy's signature verifies on its own; the envelope fails "
+            "for both, because the @2 message does not say which item the producer meant."
+        ),
+        "signature_verifies": [True, True],
+        "envelope_verifies": [False, False],
+        "envelope_reason": "reused under 2 items",
+        "trust_store": {SIGNER: {"alg": "ed25519", "public_key": pub}},
+    }
+    return out
+
+
+SCOUTSUITE = "presidio-hardened-scoutsuite"
+# Rule sets exactly as scoutsuite's aws.evidence.json maps them to O5 and T5.
+SCOUTSUITE_RULES = {
+    "O5": [
+        "cloudtrail-no-encryption-with-kms.json",
+        "cloudtrail-no-global-services-logging.json",
+        "cloudtrail-no-log-file-validation.json",
+        "cloudtrail-no-logging.json",
+        "cloudtrail-not-configured.json",
+        "config-recorder-not-configured.json",
+        "s3-bucket-no-logging.json",
+        "vpc-subnet-without-flow-log.json",
+    ],
+    "T5": [
+        "ec2-default-security-group-in-use.json",
+        "ec2-default-security-group-with-rules.json",
+        "ec2-ebs-default-encryption-disabled.json",
+        "ec2-ebs-volume-not-encrypted.json",
+        "ec2-instance-with-user-data-secrets.json",
+        "ec2-security-group-opens-all-ports-to-all.json",
+        "ec2-security-group-opens-known-port-to-all.json",
+        "iam-inline-policy-allows-NotActions.json",
+        "iam-managed-policy-allows-full-privileges.json",
+        "iam-password-policy-minimum-length.json",
+        "iam-password-policy-no-expiration.json",
+        "iam-password-policy-reuse-enabled.json",
+        "iam-root-account-no-hardware-mfa.json",
+        "iam-root-account-no-mfa.json",
+        "iam-root-account-used-recently.json",
+        "iam-root-account-with-active-keys.json",
+        "iam-user-no-key-rotation.json",
+        "iam-user-with-multiple-access-keys.json",
+        "iam-user-with-password-and-key.json",
+        "iam-user-without-mfa.json",
+        "kms-cmk-rotation-disabled.json",
+        "rds-instance-publicly-accessible.json",
+        "s3-bucket-allowing-cleartext.json",
+        "s3-bucket-no-default-encryption.json",
+        "s3-bucket-no-versioning.json",
+        "s3-bucket-world-acl.json",
+    ],
+}
+
+
+def _cloud_posture_vectors(sk, pub: str) -> dict[pathlib.Path, dict]:
+    """scoutsuite consumer vector: clean cloud controls as evidence-ref@2 refs.
+
+    presidio-hardened-scoutsuite 0.30.0 signs the family message
+    ``canonical({content_hash, signer})``; releases up to 0.29.x signed every
+    ref field instead, which ``presidio-evidence verify`` rejects. The notes pin
+    that legacy signature as a must-fail case, so a regression back to it shows.
+    """
+    digest = hashlib.sha256(b"presidio-evidence golden scoutsuite report").hexdigest()
+    claimed = "2026-10-18T00:00:00+00:00"
+    ledger_ref = f"presidio-report-manifest:sha256/{digest}"
+    refs, subjects, legacy = [], {}, {}
+    for item, rules in SCOUTSUITE_RULES.items():
+        subject = {
+            "item_id": item,
+            "provider": "aws",
+            "rules": sorted(rules),
+            "status": "clean",
+            "report_manifest_digest": digest,
+        }
+        chash = hashlib.sha256(cb(subject)).hexdigest()
+        ref = {
+            "item_id": item,
+            "source": SCOUTSUITE,
+            "source_version": "test",
+            "ledger_ref": ledger_ref,
+            "content_hash": chash,
+            "signer": SCOUTSUITE,
+            "signature": sk.sign(cb({"content_hash": chash, "signer": SCOUTSUITE})).hex(),
+            "claimed_at": claimed,
+        }
+        legacy_fields = {k: v for k, v in ref.items() if k != "signature"}
+        subjects[item] = {"claim_subject": subject, "expected_content_hash": chash}
+        legacy[item] = sk.sign(cb(legacy_fields)).hex()
+        refs.append(ref)
+    envelope = {
+        "schema": "presidio-hardened/evidence-ref@2",
+        "source": SCOUTSUITE,
+        "source_version": "test",
+        "generated_at": claimed,
+        "evidence": refs,
+    }
+    return {
+        V / "cloud-posture/valid-envelope.json": envelope,
+        V / "cloud-posture/valid-envelope.notes.json": {
+            "description": (
+                "Companion to cloud-posture/valid-envelope.json. The scoutsuite "
+                "consumer vector: clean AWS controls mapped to IKI-Gov items O5 and "
+                "T5, one Ed25519-signed evidence-ref@2 ref each, built the way "
+                "presidio-hardened-scoutsuite 0.30.0 build_evidence builds them "
+                "(claim_subject -> content_hash, family signing message). "
+                "legacy_signatures are what 0.29.x would have signed (every ref field "
+                "but the signature); they must NOT verify."
+            ),
+            "claims": subjects,
+            "report_manifest_digest": digest,
+            "verifies_with_public_key_hex": pub,
+            "trust_store": {SCOUTSUITE: {"alg": "ed25519", "public_key": pub}},
+            "legacy_signatures": legacy,
         },
     }
 

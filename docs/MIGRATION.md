@@ -1,6 +1,6 @@
 # Migration map — consumers onto presidio-evidence
 
-Order is risk-ordered, not alphabetical: the repo that ships the customer loop first, the x402 surface late, the keyless system last and schema-only. Each step is independently shippable and reversible; no consumer ever depends on an unreleased state of another. Q4 execution (ADR-0001 action item 5).
+Order is risk-ordered, not alphabetical: the repo that ships the customer loop first, the x402 surface late, the keyless system last and schema-only. Each step is independently shippable and reversible; no consumer ever depends on an unreleased state of another (ADR-0001 action item 5).
 
 ## Invariant for every step
 
@@ -8,18 +8,13 @@ Zero wire-format change. The library reproduces today's bytes (proved by the gol
 
 ## 1. ikigov-assess (first — it ships the customer loop)
 
-> **Blocked while this library is private, recorded 2026-09-17.**
-> This library is `Private :: Do Not Upload` (ADR-0001 D6) while ikigov-assess
-> ships on PyPI. A public wheel cannot depend on a private package, so "add
-> presidio-evidence as dependency" below cannot ship before the library is public, whatever
-> the visibility decision's "the other consumers may use the private library now" permits in
-> principle. Until then ikigov conforms **by vectors only**: it keeps its local
-> canonicalisation/signing mirror and pins the family golden vectors
-> (`workshop-attestation`, `workshop-leavebehind`, and now the `evidence-ref-v2`
-> tier semantics it implements consumer-side — ikigov v0.26.0 T-B6 Decision 7). The
-> import swap is re-sequenced to *after* step 3's precondition clears, at which point
-> steps 1 and 3 can share one release train. Nothing in this section is otherwise
-> changed.
+> **Unblocked from 0.5.0, the first release on PyPI.** Before that this
+> library could not be a dependency of a package published on PyPI, so ikigov
+> conformed by vectors only: it keeps a local canonicalisation/signing mirror and
+> pins the family golden vectors (`workshop-attestation`, `workshop-leavebehind`,
+> and the `evidence-ref@2` tier semantics, ikigov v0.26.0 T-B6 Decision 7). The
+> import swap below can now ship, together with `@3` emission and a per-gate
+> `@3` demand (ADR-0004 D8).
 
 What changes:
 - `src/presidio_ikigov_assess/evidence.py`: `_canonical`, `_hmac_hex`, `_verify_ed25519`, `verify_ref`, `load_trust_store` re-export from `presidio_evidence`; `EvidenceRef` dataclass imports the contract (consumer keeps its `VALID_ITEM_IDS` domain check — that is consumer-side by design).
@@ -42,8 +37,8 @@ Gate: ikigov (step 1) green in CI for one release cycle first — producer chang
 
 What changes:
 - Screening pipeline's canonicalization/signing/audit-record hashing re-exports from the library; `check_payment_policy` / `check_payment_replay` gating logic stays in x402 (product logic, not substrate).
-- **Precondition (RESOLVED 2026-07-04, founder decision): defer.** No x402 code moves into the shared library for now; the library stays private meanwhile. Until then x402 conforms via vectors only (like treasury). The other three consumers (steps 1, 2, 4) proceed now.
-- Session-3 review trigger: if the OEM-kit session changed the screening surface, re-survey before this step.
+- **Precondition: deferred** pending a founder decision on the x402 roadmap. Until then x402 conforms via vectors only (like treasury). The other three consumers (steps 1, 2, 4) proceed.
+- Review trigger: if the OEM-kit work changed the screening surface, re-survey before this step.
 
 ## 4. treasury (last, schema-only — Layer 0)
 
@@ -56,9 +51,9 @@ What changes:
 
 | Step | Repo | Precondition | Risk if skipped-ahead |
 |---|---|---|---|
-| 1 | ikigov-assess | **once this library is public** — public PyPI package cannot depend on this private library; vectors-only until then | packaging failure on every `pip install` |
+| 1 | ikigov-assess | presidio-evidence on PyPI (from 0.5.0) | packaging failure on every `pip install` |
 | 2 | hardened-ai | step 1 green one cycle | producer drift undetected by consumer |
-| 3 | x402 (+mcp) | a founder decision on the x402 roadmap; session-3 review | churn on a customer-shipped surface |
+| 3 | x402 (+mcp) | a founder decision on the x402 roadmap; OEM-kit review | churn on a customer-shipped surface |
 | 4 | treasury | none (vectors exist now) | n/a — can run any time after v0.1.0 |
 
 Step 4 has no dependency on steps 1–3 and may be done first if convenient; it is listed last only because it delivers the least de-duplication.

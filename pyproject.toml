@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "presidio-evidence"
-version = "0.4.0"
-description = "Shared evidence substrate for the presidio-hardened-* suite: pre-execution gating + signed evidence + fail-closed verification. Schema and golden test vectors are the contract; implementations conform to them. Independent of Microsoft Presidio."
+version = "0.5.0"
+description = "Signed-evidence substrate for the presidio-hardened-* family: canonical JSON, Ed25519/HMAC evidence refs and fail-closed verification. Schemas and golden vectors are the contract. Independent of Microsoft Presidio."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -20,15 +20,24 @@ keywords = [
     "eu-ai-act",
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security",
-    # Internal library, private repo pending founder clearance (ADR-0001 D6).
-    # This classifier makes any accidental `twine upload` fail server-side.
-    "Private :: Do Not Upload",
+    "Topic :: Security :: Cryptography",
 ]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/presidio-v/presidio-evidence"
+Source = "https://github.com/presidio-v/presidio-evidence"
+Issues = "https://github.com/presidio-v/presidio-evidence/issues"
+Changelog = "https://github.com/presidio-v/presidio-evidence/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 # Ed25519 signing/verification. HMAC-SHA256 and Layer 0 are stdlib-only, so the
@@ -48,6 +57,12 @@ presidio-evidence = "presidio_evidence._cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/presidio_evidence"]
+
+# The contract ships with the code: schemas/ and vectors/ become package data
+# under presidio_evidence/_contract/ (read via presidio_evidence.schemas_dir()).
+[tool.hatch.build.targets.wheel.force-include]
+"schemas" = "presidio_evidence/_contract/schemas"
+"vectors" = "presidio_evidence/_contract/vectors"
 
 [tool.ruff]
 target-version = "py310"

@@ -1,108 +1,130 @@
 # presidio-evidence
 
-The fundament of the presidio suite: the signed-evidence substrate every component writes to and verifies against — one normative contract for pre-execution gating, signed evidence, fail-closed verification, and provenance-parent chaining (ADR-0002). PRIVATE until founder clearance (ADR-0001 D6). Independent of Microsoft Presidio.
+The signed-evidence substrate of the presidio-hardened-* family. Every component that gates an action on evidence, or produces evidence for someone else to check, uses one contract: canonical JSON and SHA-256 content addressing, detached Ed25519 or HMAC-SHA256 signatures, fail-closed verification against a trust store, and provenance parents that chain payloads into a verifiable graph. Independent of Microsoft Presidio.
 
-Extracted from four production implementations before they could drift; now six family repos conform (ikigov-assess, hardened-ai, x402, x402-mcp, arch-translucency, treasury). The provenance-parents convention chains classification → gate decision → training run → runtime posture → payment into one verifiable DAG — regulatory traceability as a data structure, not process documentation.
+The library was extracted from four production implementations before they could drift apart. Seven family repositories now conform to it. Provenance parents (ADR-0002) chain classification → gate decision → training run → runtime posture → payment into one DAG, so regulatory traceability is a data structure rather than process documentation.
 
-**The contract is `schemas/` + `vectors/`, not the code.** Both implementations (Python package, Rust crate) prove conformance against the same golden vectors; consumers migrate by pointing their existing tests at these vectors first, imports second.
+**The contract is `schemas/` + `vectors/`, not the code.** The Python package and the Rust crate both prove conformance against the same golden vectors, and both trees ship inside the Python package. A consumer migrates by pointing its existing tests at the vectors first and swapping imports second.
+
+## Install
+
+```bash
+pip install presidio-evidence             # Layer 0 + HMAC, stdlib only
+pip install 'presidio-evidence[crypto]'   # adds Ed25519 (cryptography)
+```
+
+Python 3.10+. The runtime has no dependencies; Ed25519 needs the `crypto` extra.
+
+## Use
+
+```python
+from presidio_evidence import (
+    EVIDENCE_REF_SCHEMA_ID_V3,
+    build_envelope,
+    content_hash,
+    load_trust_store,
+    sign_evidence_v3,
+    verify_envelope,
+)
+
+ch = content_hash({"item_id": "D1", "status": "evidence-present"})  # Layer 0
+sig = sign_evidence_v3(ch, "my-signer", "iki-gov", "D1", key=priv_hex)  # Layer 1, @3
+ref = {
+    "item_id": "D1",
+    "framework": "iki-gov",
+    "source": "my-tool",
+    "source_version": "1.0",
+    "ledger_ref": "run-42",
+    "content_hash": ch,
+    "signer": "my-signer",
+    "signature": sig,
+    "claimed_at": "2026-10-25T00:00:00Z",
+}
+envelope = build_envelope([ref], schema=EVIDENCE_REF_SCHEMA_ID_V3)
+
+trust = load_trust_store({"my-signer": {"alg": "ed25519", "public_key": pub_hex}})
+results = verify_envelope(envelope, trust, expected_framework="iki-gov")
+assert all(r.verified for r in results)
+```
+
+Verification never raises on bad evidence: a wrong key, tampered content, a relabelled subject or an unknown signer verifies as `False`, with a reason per ref. A malformed envelope raises `EvidenceError`.
+
+Keys (ADR-0001 D3): `generate_ed25519_keypair()` and `public_key_hex(priv)` produce trust-store entries; `load_private_key(path)` requires mode `0600` (or reads an environment variable with `env="VAR"`) and never echoes key material. Key custody stays with the operator; the library stores nothing.
+
+The contract trees are package data: `schemas_dir()`, `vectors_dir()`, `schema_ids()` and `load_schema("presidio-hardened/evidence-ref@3")`.
+
+## CLI
+
+```bash
+presidio-evidence verify envelope.json --trust trust-store.json
+presidio-evidence verify envelope.json --trust trust-store.json --require-subject-binding iki-gov
+presidio-evidence keygen --out signer.key --signer my-signer   # 0600 file; prints the trust-store entry
+```
+
+`verify` exits 0 only if every ref verifies. It fails closed on malformed input, on refs that declare an `optimistic` or `zk` tier (this verifier checks signature attestations only, ADR-0003 D6), and on an `@1`/`@2` ref claimed for more than one item.
+
+## The contract
+
+| Schema | What it pins |
+|---|---|
+| `evidence-ref@1` | The envelope and its eight ref fields; signature over `canonical({content_hash, signer})`. Frozen. |
+| `evidence-ref@2` | Adds an optional per-ref `assurance_tier` (`attested` / `optimistic` / `zk`, ADR-0003); same signed message. |
+| `evidence-ref@3` | Adds a required `framework` and signs the subject and the tier: `canonical({assurance_tier, content_hash, framework, item_id, signer})` (ADR-0004). A ref copied under another item, framework or tier no longer verifies. |
+| `trust-store@1` | Signer → algorithm and keys, with rotation lists. |
+| `training-run@1`, `gate-certificate@1` | Layer-0 payloads the family's producers emit (ADR-0005 numeric encoding, ADR-0006 certificate identity). |
+
+Layers (ADR-0001 D1): **0** canonical JSON (strict: floats rejected) and SHA-256 content addressing · **1** detached signatures and trust-store verification · **2** approval semantics, out of scope (treasury keeps its dual control).
+
+Every schema change is append-only (ADR-0001 D5): a published vector is never edited, and a new wire format is a new major. Verifiers accept `@1`, `@2` and `@3`; a gate that needs subject binding demands `@3` for its framework.
 
 ## Consumers
 
-| Repo | Evidence | Conformance layer |
+| Repository | Evidence | Layer |
 |---|---|---|
-| presidio-hardened-ikigov-assess | `evidence-ref@1`/`@2` verifier; workshop leave-behinds | Layer 0 + 1 |
-| presidio-hardened-ai | `evidence-ref@1` producer (`pai ingest --evidence-out`) | Layer 0 + 1 |
-| presidio-hardened-x402 | screening audit pipeline; SLO readings via `evidence-bridge` | Layer 0 + 1 |
-| presidio-hardened-x402-mcp | signed `payment-decision@1` records in `evidence-ref@1` envelopes, built by the x402 parent (0.3.0) | Layer 0 + 1 |
-| presidio-hardened-arch-translucency | signed SLO `evidence-ref@1` envelopes; `training-run@1` and `energy-reading@1` Layer-0 readings for the signing bridge | Layer 0 + 1 |
-| presidio-hardened-treasury | close checkpoints (Rust, dual-control, keyless) | Layer 0 |
+| [presidio-hardened-ikigov-assess](https://github.com/presidio-v/presidio-hardened-ikigov-assess) | `evidence-ref@1`/`@2` verifier, gate certificates, workshop leave-behinds | 0 + 1 |
+| [presidio-hardened-x402](https://github.com/presidio-v/presidio-hardened-x402) | screening audit pipeline; SLO readings via `evidence-bridge` | 0 + 1 |
+| [presidio-hardened-x402-mcp](https://github.com/presidio-v/presidio-hardened-x402-mcp) | signed `payment-decision@1` records in `evidence-ref@1` envelopes | 0 + 1 |
+| [presidio-hardened-arch-translucency](https://github.com/presidio-v/presidio-hardened-arch-translucency) | signed SLO envelopes; `training-run@1` and `energy-reading@1` readings | 0 + 1 |
+| [presidio-hardened-scoutsuite](https://github.com/presidio-v/presidio-hardened-scoutsuite) | clean cloud controls as `evidence-ref@2` refs (0.30.0+) | 0 + 1 |
+| [presidio-hardened-treasury](https://github.com/presidio-v/presidio-hardened-treasury) | close checkpoints (Rust, dual control, keyless) | 0 |
+| presidio-hardened-ai (not public) | `evidence-ref@1` producer (`pai ingest --evidence-out`) | 0 + 1 |
 
-presidio-hardened-scoutsuite emits `evidence-ref@2` envelopes that pass schema validation, but it signs every ref field rather than `canonical({content_hash, signer})`, so `presidio-evidence verify` rejects them. It is not counted as conforming until its signing message matches `vectors/signing/`.
+Each consumer has a golden vector here, so a regression in any of them fails this repository's CI as well as its own.
 
-Layers (ADR-0001 D1): **0** canonical JSON (strict: floats rejected) + SHA-256 content addressing · **1** detached Ed25519/HMAC-SHA256 signatures + trust-store verification · **2** approval semantics (out of scope; treasury keeps dual-control).
+## Verify a checkout
 
-`evidence-ref@2` (ADR-0003, Accepted 2026-07-05) is an additive revision: it makes the envelope `schema` field required and gives each ref an optional `assurance_tier` (`attested` / `optimistic` / `zk`, default `attested` when absent) so producers can declare, and verifiers demand, an assurance regime — proof-carrying-transaction vocabulary from Computational Jurisprudence. Verifiers accept both `@1` and `@2`; declared tiers are honored only under `@2`, the signed message is unchanged (the tier is not signed), and `@1` stays frozen. `optimistic`/`zk` name a target — fraud-proof and ZK-proof verification are out of scope here.
+```bash
+pip install -e ".[dev]"
+python scripts/generate_vectors.py --check   # vectors byte-stable
+pytest tests/ -q                             # Python conformance, 100% coverage gate
+cargo test --manifest-path rust/Cargo.toml   # Rust conformance
+```
 
 ## Layout
 
 ```
-schemas/    JSON Schemas — normative (evidence-ref@1, evidence-ref@2, trust-store@1, training-run@1, gate-certificate@1)
-vectors/    golden test vectors — append-only, generated by scripts/generate_vectors.py
-src/        Python package (contract constants + Layer-0/1 implementation, key helpers, CLI, ADR-0005/0006 references; v0.4.0)
-rust/       Rust crate (Layer 0 implementation + conformance tests)
+schemas/    JSON Schemas (normative)
+vectors/    golden test vectors, append-only, generated by scripts/generate_vectors.py
+src/        Python package: Layer 0/1, refs and envelopes, keys, CLI
+rust/       Rust crate: Layer 0 and the signing messages, plus conformance tests
 tests/      Python conformance suite
 docs/adr/   architecture decision records
 docs/       MIGRATION.md (per-consumer plan)
 ```
 
-## Verify
-
-```bash
-pip install -e ".[dev]"
-python scripts/generate_vectors.py --check   # vectors byte-stable
-pytest tests/ -q                             # Python conformance
-cargo test --manifest-path rust/Cargo.toml   # Rust conformance (needs toolchain)
-```
-
-## Using the library (v0.4.0)
-
-```python
-from presidio_evidence import (
-    canonical_bytes,
-    content_hash,
-    sign_evidence,
-    verify_ref,
-    load_trust_store,
-    parse_document,
-    build_envelope,
-)
-
-ch = content_hash({"item_id": "T5", "status": "clean"})  # Layer 0
-sig = sign_evidence(ch, "my-signer", key=priv_hex, alg="ed25519")  # Layer 1
-trust = load_trust_store({"my-signer": {"alg": "ed25519", "public_key": pub_hex}})
-ok = verify_ref({"content_hash": ch, "signer": "my-signer", "signature": sig}, trust)
-```
-
-Ed25519 needs the optional extra: `pip install 'presidio-evidence[crypto]'`.
-HMAC-SHA256 and Layer 0 are stdlib-only. Verification is fail-closed.
-
-Key material (ADR-0001 D3): `load_private_key(path)` enforces mode `0600` on
-the file (or `load_private_key(env="VAR")` reads an env var); it never echoes
-the key. `generate_ed25519_keypair()` / `public_key_hex(priv)` produce the hex
-that goes into a trust store. Custody stays out-of-band — no key storage here.
-
-CLI (ADR-0001 D4), also `python -m presidio_evidence`:
-
-```bash
-presidio-evidence verify envelope.json --trust trust-store.json   # exit 0 iff every ref verifies
-presidio-evidence keygen --out signer.key --signer my-signer      # 0600 file; prints the trust-store entry
-```
-
-`verify` fails closed on any malformed input and on refs declaring an
-`optimistic`/`zk` tier — this verifier checks signature attestations only
-(ADR-0003 D6).
-
-The Rust crate (`rust/`) ships Layer 0 — `canonical_string`/`canonical_bytes`,
-`sha256_hex`/`content_hash`, `signing_message` — and no signature layer (treasury
-is keyless by design, ADR-0001 D1).
-
 ## Roadmap
 
 | Version | Scope | Status |
 |---|---|---|
-| 0.1.0 | ADR-0001, schemas, golden vectors, dual-language conformance suites | delivered |
-| 0.2.0 | Q4 extraction: canonicalization + signing + verification (Python); consumers migrate via re-export | delivered |
-| 0.2.1 | Consumer vectors for ikigov, x402, and treasury | delivered |
-| 0.2.2 | ADR-0003 assurance-tier contract (`evidence-ref@2`) | delivered |
-| 0.3.0 | Rust Layer-0 implementation (crate 0.2.0, for treasury); ADR-0001 D3/D4 key helpers + `presidio-evidence` CLI; `energy-reading@1` | delivered |
-| 0.4.0 | ADR-0005 numeric payload encoding; ADR-0006 gate-certificate identity; `training-run@1` and `gate-certificate@1` schemas + vectors | current |
-| 0.5.0 | x402 binding (gated on the x402 roadmap) | planned |
+| 0.1.0 – 0.4.0 | ADR-0001; schemas and vectors; Python reference implementation; consumer vectors; `evidence-ref@2` tiers; Rust Layer 0; key helpers and CLI; numeric encoding and gate-certificate identity | delivered |
+| 0.5.0 | First public release: `evidence-ref@3` subject binding (ADR-0004), contract trees as package data, scoutsuite consumer vector | current |
+| next | Producers dual-emit `@3`, consumers demand it per gate; tighter `training-run@1` / `gate-certificate@1` schemas ([#2](https://github.com/presidio-v/presidio-evidence/issues/2)) | planned |
 
-Full deliberation: [PRESIDIO-REQ.md](PRESIDIO-REQ.md). Design rationale: [docs/adr/ADR-0001-evidence-substrate.md](docs/adr/ADR-0001-evidence-substrate.md). Migration order and details: [docs/MIGRATION.md](docs/MIGRATION.md).
+Design rationale: [ADR-0001](docs/adr/ADR-0001-evidence-substrate.md). Requirements ledger: [PRESIDIO-REQ.md](PRESIDIO-REQ.md). Migration order: [docs/MIGRATION.md](docs/MIGRATION.md). Changes: [CHANGELOG.md](CHANGELOG.md).
 
-## Governance
+## Security
 
-Humboldt discipline applies: anything externally visible (publish, visibility change, README claims) requires a founder-signed release step. ADR-0001 is **Accepted** (founder-signed 2026-06-12). Scope is extraction + conformance only — new capabilities are rejected and recorded as ledger entries.
+See [SECURITY.md](SECURITY.md) for supported versions, how to report a vulnerability, and the threat model.
 
 ## License
 

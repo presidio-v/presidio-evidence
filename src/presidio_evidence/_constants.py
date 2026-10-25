@@ -10,8 +10,22 @@ EVIDENCE_REF_SCHEMA_ID = "presidio-hardened/evidence-ref@1"
 #: field required; what gets signed is unchanged from @1.
 EVIDENCE_REF_SCHEMA_ID_V2 = "presidio-hardened/evidence-ref@2"
 
+#: Subject-binding revision (ADR-0004): each ref names its ``framework`` and the
+#: signature covers ``{assurance_tier, content_hash, framework, item_id, signer}``.
+EVIDENCE_REF_SCHEMA_ID_V3 = "presidio-hardened/evidence-ref@3"
+
 #: Schema ids the verifier accepts (fail-closed on any other; ADR-0001 D4/D5).
-EVIDENCE_REF_SCHEMA_IDS = (EVIDENCE_REF_SCHEMA_ID, EVIDENCE_REF_SCHEMA_ID_V2)
+EVIDENCE_REF_SCHEMA_IDS = (
+    EVIDENCE_REF_SCHEMA_ID,
+    EVIDENCE_REF_SCHEMA_ID_V2,
+    EVIDENCE_REF_SCHEMA_ID_V3,
+)
+
+#: Schema ids whose refs may declare ``assurance_tier`` (ADR-0003, ADR-0004).
+TIERED_SCHEMA_IDS = (EVIDENCE_REF_SCHEMA_ID_V2, EVIDENCE_REF_SCHEMA_ID_V3)
+
+#: An @3 ``framework`` id: one fixed item vocabulary, never reused (ADR-0004 D1).
+FRAMEWORK_PATTERN = r"^[a-z0-9][a-z0-9._-]{0,63}$"
 
 #: Assurance tiers (ADR-0003), default first: signature-attested / trusted
 #: execution ("attested"), bonded optimistic assertion ("optimistic"), succinct

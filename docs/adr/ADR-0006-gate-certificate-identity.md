@@ -77,7 +77,7 @@ Cross-checked at creation against ikigov-assess v0.28.0 (read-only): `build_cert
 
 ## Action items
 
-1. [ ] Founder sign-off on G1–G5.
+1. [x] Founder sign-off on G1–G5 (Accepted 2026-10-18, PR #46).
 2. [x] Reference helper, both schemas, `vectors/gate-certificate/`, Python and Rust conformance (this PR).
 3. [ ] ikigov-assess: expose the identity (open point 5).
 4. [ ] arch-translucency: optional `--gate-certificate` verify-then-parent input (open point 1).
