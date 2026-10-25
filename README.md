@@ -87,7 +87,7 @@ Every schema change is append-only (ADR-0001 D5): a published vector is never ed
 | [presidio-hardened-arch-translucency](https://github.com/presidio-v/presidio-hardened-arch-translucency) | signed SLO envelopes; `training-run@1` and `energy-reading@1` readings | 0 + 1 |
 | [presidio-hardened-scoutsuite](https://github.com/presidio-v/presidio-hardened-scoutsuite) | clean cloud controls as `evidence-ref@2` refs (0.30.0+) | 0 + 1 |
 | [presidio-hardened-treasury](https://github.com/presidio-v/presidio-hardened-treasury) | close checkpoints (Rust, dual control, keyless) | 0 |
-| presidio-hardened-ai (not public) | `evidence-ref@1` producer (`pai ingest --evidence-out`) | 0 + 1 |
+| a private producer | `evidence-ref@1` producer | 0 + 1 |
 
 Each consumer has a golden vector here, so a regression in any of them fails this repository's CI as well as its own.
 

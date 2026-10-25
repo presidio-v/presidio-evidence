@@ -1,17 +1,18 @@
 # Changelog
 
 Release notes up to v0.3.0 live in the GitHub releases and in PRESIDIO-REQ.md.
-From here on, changes are recorded in this file first. Pull-request numbers up to
-#50 refer to the private development repository this history was published from.
+From here on, changes are recorded in this file first. Pull-request and issue
+numbers in the history up to v0.5.0 refer to the private development
+repositories this history was published from.
 
-## [Unreleased]
+## [0.5.0] — 2026-10-25
 
 First public release. The repository and its history are public, and the
 package is published on PyPI as `presidio-evidence`. Rust crate 0.3.0
 (`publish = false`).
 
 ### Added
-- **`evidence-ref@3` (ADR-0004, Proposed): the signature binds the subject.**
+- **`evidence-ref@3` (ADR-0004): the signature binds the subject.**
   Each ref carries a required `framework`; the signed message is
   `canonical({assurance_tier, content_hash, framework, item_id, signer})`. A ref
   copied under another item, framework or tier no longer verifies. The envelope
@@ -40,6 +41,23 @@ package is published on PyPI as `presidio-evidence`. Rust crate 0.3.0
   URLs and Python 3.10–3.13 classifiers added.
 
 ### Security
+Fixes from the pre-publication security audit of 2026-10-25 (Cloudflare
+security-audit skill, two passes; four low-severity findings, all fixed):
+- **Trust store: a `public_key` could act as an HMAC secret.** An entry with
+  `public_key` and no `alg` defaulted to `hmac-sha256` and used the public key as
+  the shared secret, so anyone holding the public key could forge verified
+  evidence. `public_key` now implies Ed25519, and `public_key` under
+  `hmac-sha256` is rejected. Vectors: `trust-store/rejected-hmac-with-public-key`,
+  `trust-store/public-key-implies-ed25519`.
+- **`verify_ref` / `verify_hmac` raised `TypeError` on a non-ASCII signature**
+  instead of returning `False`. Signatures that are not lowercase hex now verify
+  as `False` before any comparison.
+- **A lone surrogate in a signer or item id raised `UnicodeEncodeError`** and
+  aborted the whole envelope. The parser now rejects such strings with
+  `EvidenceError`; bare-mapping verification returns `False`.
+- **CLI output could be forged** with newlines or terminal escapes in
+  `item_id`/`signer`. Control characters in those fields are rejected, and the
+  CLI prints them JSON-escaped, one line per ref.
 - Known limitation, now documented: the `@2` tier is not signed and can be
   stripped by whoever assembles an envelope. Use `@3` where the tier matters.
 

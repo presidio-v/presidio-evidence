@@ -1,9 +1,9 @@
 # ADR-0004: evidence-ref@3 — bind the subject into the signed message
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-25
 **Deciders:** V.S. (founder, governing account)
-**Founder sign-off:** pending.
+**Founder sign-off:** Accepted by V.S. on 2026-10-25.
 **Source mandate:** issue #1 (carried over from the development repository); ikigov-assess security audit 2026-09-30, finding C-1, and its consumer-side mitigation (ikigov-assess PR #60, `reused_refs`).
 
 ## Context
@@ -34,7 +34,7 @@ Ship **`evidence-ref@3`** (`schemas/evidence-ref.v3.schema.json`, id `presidio-h
 - **D5 — Reuse rule as the floor for @1/@2.** The library ships ikigov's rule as `reused_refs(refs)`: among @1/@2 refs, a `(signer, content_hash)` pair claimed for more than one `item_id` verifies for none of them (the framework is implicit in the verifier for these majors). @3 refs are exempt: one artefact may back several items honestly, because each claim carries its own signature over its own subject. `verify_envelope(doc, trust, *, expected_framework=None)` applies parse, signature, binding policy and the floor, returns a per-ref result with a reason, and is what the CLI uses, so consumers do not re-implement the floor. Known limit: the floor works per envelope; claims split across envelopes evade it, which is the case for demanding @3.
 - **D6 — @3 fixes the tier parse trap.** The parser reads `assurance_tier` under @2 and @3. Under @3 the tier is signed, so relabelling it (for example stripping `optimistic` to pass an attested-only verifier) breaks the signature. Under @2 that relabel remains possible; this is recorded as a known @2 limitation and is another reason to demand @3.
 - **D7 — Rust.** The crate mirrors the constants and adds `signing_message_v3(content_hash, signer, framework, item_id, assurance_tier)`. It still does not sign or verify (treasury is keyless, ADR-0001 D1). Crate version 0.3.0.
-- **D8 — Rollout.** Substrate and vectors first (this repo, 0.5.0). Then producers dual-emit @2 and @3 (presidio-hardened-ai `pai ingest --evidence-out`, scoutsuite, arch-translucency). Then consumers demand @3 per gate (ikigov-assess first). @1 and @2 stay accepted; their removal is not planned.
+- **D8 — Rollout.** Substrate and vectors first (this repo, 0.5.0). Then producers dual-emit @2 and @3 (a private producer, scoutsuite, arch-translucency). Then consumers demand @3 per gate (ikigov-assess first). @1 and @2 stay accepted; their removal is not planned.
 
 ### Vectors (append-only)
 

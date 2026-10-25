@@ -11,7 +11,7 @@ Requirements:
 - R1 ADR deciding schema unification, language strategy, key management/rotation, verification semantics, versioning policy — **Delivered:** docs/adr/ADR-0001 (**Accepted, founder-signed 2026-06-12**). Founder pre-selected Python lib + Rust crate (2026-06-12).
 - R2 Schema + golden test vectors as the first commit; conformance tests before code — **Delivered:** schemas/ (evidence-ref@1 verbatim-frozen, trust-store@1), vectors/ (generated + byte-stability-checked by scripts/generate_vectors.py), Python suite green; Rust suite written, first run pending toolchain (see Open).
 - R3 CI to family standard (SAST, coverage gate, SBOM) — **Delivered:** ci.yml (ruff incl. S rules, pytest --cov fail_under=100, pip-audit, CycloneDX SBOM artifact, vector --check), codeql.yml (public-gated, family precedent), ci-rust.yml (manual until first green run, ci-zk precedent), dependabot (pip/cargo/actions).
-- R4 Migration map per consumer — **Delivered:** docs/MIGRATION.md (ikigov → hardened-ai → x402 → treasury schema-only).
+- R4 Migration map per consumer — **Delivered:** docs/MIGRATION.md (ikigov → the private AI producer → x402 → treasury schema-only).
 - R5 Repo private by default — **Delivered:** "Private :: Do Not Upload" classifier + `publish = false` guard against accidental publication. **Superseded by v0.5.0:** the repository is public and the package is on PyPI (ADR-0001 D6 amendment).
 
 Scoping decisions:
@@ -39,14 +39,14 @@ Rejected "while we're at it" items (recorded, not built):
 
 ## v0.2.0 — extraction (delivered)
 
-Python implementation extracted from hardened-ai/ikigov and shipped in the package, wire-format unchanged (golden vectors prove it byte-for-byte):
+Python implementation extracted from the private AI producer and ikigov and shipped in the package, wire-format unchanged (golden vectors prove it byte-for-byte):
 
 - **Layer 0** — `canonical_bytes` (strict: sorted keys, `(",",":")`, UTF-8, floats rejected), `sha256_hex`, `content_hash`.
 - **Layer 1** — `signing_message` (signer-bound), `sign_evidence`/`sign_ed25519`/`sign_hmac`, `verify_ed25519`/`verify_hmac` (fail-closed). Ed25519 behind the optional `[crypto]` extra; HMAC + Layer 0 are stdlib-only (runtime `dependencies = []`).
 - **Refs & trust** — `EvidenceRef`, `parse_document`/`load_evidence`, `build_envelope`, `load_trust_store` (bare-string + object entries, key rotation), `verify_ref`. `item_id` domain validation stays consumer-side by design.
 - Conformance suite re-pointed at the library (`conftest.canonical_bytes` is now the shipped function); 100% coverage gate retained.
 
-Consumers migrate per docs/MIGRATION.md (ikigov first, then hardened-ai). First proof point: `presidio-hardened-scoutsuite` (a producer) emits envelopes that ikigov-assess verifies via this contract; its 0.29.0 interop golden cross-checks the same wire format.
+Consumers migrate per docs/MIGRATION.md (ikigov first, then the private AI producer). First proof point: `presidio-hardened-scoutsuite` (a producer) emits envelopes that ikigov-assess verifies via this contract; its 0.29.0 interop golden cross-checks the same wire format.
 
 Deferred to a follow-up (not blocking consumers, which vendor their own copies today): shipping `schemas/` + `vectors/` as importable package data, and the Rust Layer-0 implementation (v0.3.0, for treasury).
 
@@ -72,8 +72,8 @@ Both ADRs accepted by the founder on 2026-10-18 (#47). Additive only: no publish
 Founder decision 2026-10-25: the repository goes public (ADR-0001 D6 amendment).
 The development history was published with internal correspondence removed.
 
-- R1 **ADR-0004 `evidence-ref@3` — Delivered (ADR Proposed, founder sign-off with
-  the release).** Security fix to a demonstrated fail-open (ikigov-assess audit
+- R1 **ADR-0004 `evidence-ref@3` — Delivered (ADR Accepted by the founder
+  2026-10-25).** Security fix to a demonstrated fail-open (ikigov-assess audit
   2026-09-30, C-1): the @1/@2 signature does not cover the item, so one genuine ref
   copied under 25 checklist items opened every gate. @3 adds a required
   `framework` and signs `canonical({assurance_tier, content_hash, framework,

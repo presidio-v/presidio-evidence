@@ -13,13 +13,13 @@ Four repos independently implement the same pattern — *pre-execution gating + 
 | Consumer | Evidence artefact | Signing | Canonicalization | Status |
 |---|---|---|---|---|
 | ikigov-assess | `presidio-hardened/evidence-ref@1` (consumer/verifier); `workshop-leavebehind@1` manifests | Ed25519 + HMAC-SHA256, trust store w/ key lists | sorted-keys compact JSON, UTF-8, `ensure_ascii=False` | shipped (v0.21.0) |
-| hardened-ai | `evidence-ref@1` (producer, `pai ingest --evidence-out`); HMAC-chained JSONL ledger | Ed25519 + HMAC-SHA256, hex, detached | identical (`hashing.canonical_bytes`) | shipped (v0.30.0) |
+| private AI producer | `evidence-ref@1` (producer); HMAC-chained JSONL ledger | Ed25519 + HMAC-SHA256, hex, detached | identical (`hashing.canonical_bytes`) | shipped (v0.30.0) |
 | x402 (+ mcp) | screening audit pipeline (`POST /v1/screen` → ScreenResponse, audit_token); HMAC-chained JSONL audit log | Ed25519 + HMAC-SHA256, identical golden vector | identical | shipped (v0.4.0) |
 | treasury | `treasury-close/checkpoint/v1` (Rust): content-addressed checkpoints, RFC 6962 Merkle heads | **none** — SHA-256 content addressing + dual-control (ActorId, preparer≠approver) | float-rejecting canonical JSON, depth-validated, sorted keys | shipped |
 
 Survey findings that shape the decision:
 
-1. **Three of four already share a byte-identical wire format.** ikigov, hardened-ai, and x402 use the same 8-field `EvidenceRef`, the same canonical JSON profile, the same detached signature over `canonical({"content_hash", "signer"})`, and the *same committed golden vector* (priv `01`×32 → pub `8a88e3dd…6f5c`, sig `a0dc8599…590a`; independently recomputed 2026-06-12, byte-identical). The schema is already unified de facto; the risk is silent drift, not divergence today.
+1. **Three of four already share a byte-identical wire format.** ikigov, the private AI producer, and x402 use the same 8-field `EvidenceRef`, the same canonical JSON profile, the same detached signature over `canonical({"content_hash", "signer"})`, and the *same committed golden vector* (priv `01`×32 → pub `8a88e3dd…6f5c`, sig `a0dc8599…590a`; independently recomputed 2026-06-12, byte-identical). The schema is already unified de facto; the risk is silent drift, not divergence today.
 2. **Treasury is intentionally different, not lagging.** Its trust model is content addressing + dual-control approval (no key material at all). Forcing Ed25519 into it would *add* a key-management attack surface to a system whose security argument is "no secrets to steal". Treasury's canonical JSON is also strictly stricter (rejects floats, validates nesting depth).
 3. **Signer identity is bound into the signed message** (`{content_hash, signer}`), preventing cross-signer signature replay. Trust stores already support key lists per signer (rotation) on the consumer side; the producer has no rotation concept.
 4. **The x402 audit pipeline is a shipped, customer-facing surface.** Extraction must not change its signed bytes or its release timing.
@@ -35,12 +35,12 @@ Extract **one internal library, `presidio-evidence`**, structured as *schema + g
 Conformance is layered so treasury joins without distorting its trust model:
 
 - **Layer 0 — Canonical substrate (all four):** canonical JSON (sorted keys, `(",", ":")` separators, UTF-8, no ASCII escaping, **floats rejected**, bounded nesting depth) + SHA-256 content addressing. Float rejection adopts treasury's stricter profile; it is backward-compatible for every signed message in production (all existing signed payloads are string-only).
-- **Layer 1 — Signed evidence (ikigov, hardened-ai, x402):** detached signature over `canonical({"content_hash", "signer"})`; algorithms `ed25519` (default) and `hmac-sha256` (back-compat); hex encoding; trust-store verification.
+- **Layer 1 — Signed evidence (ikigov, the private AI producer, x402):** detached signature over `canonical({"content_hash", "signer"})`; algorithms `ed25519` (default) and `hmac-sha256` (back-compat); hex encoding; trust-store verification.
 - **Layer 2 — Approval semantics (treasury):** dual-control (preparer≠approver), supersession rules. **Out of library scope**; treasury conforms at Layer 0 + schema-shape only, keeping its checkpoint schema. A future `evidence-ref@2` may add an optional approval block — recorded as ledger entry, not built now.
 
 ### D2 — Language strategy: Python lib + Rust crate, vectors as the contract (founder-selected 2026-06-12)
 
-One repo, two implementations: Python package `presidio_evidence` (root `pyproject.toml`, src layout) and Rust crate `presidio-evidence` (`rust/`). **The contract is the `schemas/` + `vectors/` trees, not either implementation.** Both run the identical vector suite; a vector change requires both suites green. Treasury consumes the Rust crate (or schema-only until then); ikigov/hardened-ai/x402 consume the Python package.
+One repo, two implementations: Python package `presidio_evidence` (root `pyproject.toml`, src layout) and Rust crate `presidio-evidence` (`rust/`). **The contract is the `schemas/` + `vectors/` trees, not either implementation.** Both run the identical vector suite; a vector change requires both suites green. Treasury consumes the Rust crate (or schema-only until then); ikigov, the private AI producer and x402 consume the Python package.
 
 ### D3 — Key management and rotation
 
@@ -109,6 +109,6 @@ The decisive observation: **the unification already happened in the wire format;
 2. [x] Migration map per consumer (`docs/MIGRATION.md`).
 3. [x] Visibility question put to the founder (decision recorded in item 4).
 4. [x] Founder signed this ADR (Accepted, 2026-06-12). Visibility decision recorded 2026-07-04; D6 resolved: repo stays private. Superseded 2026-10-25 by the D6 amendment: public from v0.5.0.
-5. [ ] Q4 extraction in migration-map order: ikigov → hardened-ai → x402 → treasury (schema-only).
+5. [ ] Q4 extraction in migration-map order: ikigov → the private AI producer → x402 → treasury (schema-only).
 6. [x] Rust CI lane promoted from manual trigger to push/PR — validated green locally (fmt + clippy `-D warnings` + 6/6 conformance tests, 2026-06-12) and green on first push run.
 7. [ ] **Protect `main` (block force-push + deletion).** Blocked 2026-06-12: branch protection and rulesets both require a paid plan for **private** repos, and `presidio-v` is on Free. Unblocked by the D6 amendment: applied when the repository goes public (v0.5.0).

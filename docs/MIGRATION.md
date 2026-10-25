@@ -24,7 +24,7 @@ What changes:
 Order within the step: add presidio-evidence as dependency → run ikigov's own test suite against library functions in parallel (shadow assertions) → swap imports → delete local copies.
 Rollback: revert the import commit; local copies are deleted only in a separate, later commit.
 
-## 2. hardened-ai (producer side)
+## 2. The private AI producer (producer side)
 
 What changes:
 - `evidence.py` (`sign_evidence`, `sign_ed25519`, `verify_ed25519`, `export_evidence` envelope), `hashing.py` (`canonical_bytes`, `sha256_hex`) re-export from the library.
@@ -52,7 +52,7 @@ What changes:
 | Step | Repo | Precondition | Risk if skipped-ahead |
 |---|---|---|---|
 | 1 | ikigov-assess | presidio-evidence on PyPI (from 0.5.0) | packaging failure on every `pip install` |
-| 2 | hardened-ai | step 1 green one cycle | producer drift undetected by consumer |
+| 2 | private AI producer | step 1 green one cycle | producer drift undetected by consumer |
 | 3 | x402 (+mcp) | a founder decision on the x402 roadmap; OEM-kit review | churn on a customer-shipped surface |
 | 4 | treasury | none (vectors exist now) | n/a — can run any time after v0.1.0 |
 
