@@ -31,7 +31,8 @@ def trust_file(tmp_path):
 def test_verify_golden_envelope_exits_0(trust_file, capsys):
     assert main(["verify", str(ENVELOPE), "--trust", trust_file]) == 0
     out = capsys.readouterr().out
-    assert out.startswith("ok ") and NOTES["trust_store"].keys() & set(out.split())
+    assert out.startswith("ok ")
+    assert any(json.dumps(signer) in out for signer in NOTES["trust_store"])
 
 
 def test_verify_v2_absent_tier_is_attested_and_exits_0(trust_file):

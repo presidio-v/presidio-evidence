@@ -55,10 +55,11 @@ def cmd_verify(args: argparse.Namespace) -> int:
         return EXIT_FAIL
     for result in results:
         ref = result.ref
+        ident = f"{json.dumps(ref.item_id)} {json.dumps(ref.signer)}"  # escaped: one line per ref
         if result.verified:
-            print(f"ok   {ref.item_id} {ref.signer}")
+            print(f"ok   {ident}")
         else:
-            print(f"FAIL {ref.item_id} {ref.signer}: {result.reason}", file=sys.stderr)
+            print(f"FAIL {ident}: {result.reason}", file=sys.stderr)
     return EXIT_OK if all(r.verified for r in results) else EXIT_FAIL
 
 
