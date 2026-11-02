@@ -105,6 +105,15 @@ The development history was published with internal correspondence removed.
 - Not in scope: #1 (schema tightening, producer-coordinated), `walk_parents`
   (L-EV-5), trust-store CLI (L-EV-4), x402 binding.
 
+## v0.5.1 — Python 3.11+ (2026-11-02)
+
+- R1 **Python floor 3.11 — Delivered.** Python 3.10 is end of life (October
+  2026); 0.5.0 already failed at import there (`importlib.resources.abc` is
+  3.11+). `requires-python = ">=3.11"`, classifiers and ruff target updated.
+- R2 **Every supported Python in CI — Delivered.** The test suite runs on 3.12
+  and 3.13 next to the full gate on 3.11; CI toolchain and SBOM generator
+  hash-pinned.
+
 ## Provenance-parents convention (deliberated 2026-07-02, suite strategy)
 
 Strategy context: the suite claim — classify (eai-classificator → ikigov) → govern (ikigov gates) → build/train (arch-translucency training domain) → operate (pat posture, x402) → **prove** — is only checkable if the *relationships between* evidence payloads are themselves evidence. Decision drafted as **ADR-0002 (Proposed)**: any family payload MAY carry `parents: [<content_hash>, …]` **inside** its `attested_content` — lineage inside the signed bytes, envelope `evidence-ref@1` untouched (stays frozen per ADR-0001 D5). Family hex discipline for entries; fail-closed producer validation; omitted when empty; acyclic by construction (a hash cannot reference a future payload). Consumer graph-walk semantics stay out of library scope for now.
