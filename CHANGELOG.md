@@ -30,6 +30,10 @@ package is published on PyPI as `presidio-evidence`. Rust crate 0.3.0
   as scoutsuite 0.30.0 signs them, with the 0.29.x legacy signatures as
   must-fail cases.
 - `vectors/evidence-ref-v2/reused-ref.json` pins the `@1`/`@2` reuse floor.
+- **Release workflow** (`publish.yml`): a signed `v*` tag builds the sdist and
+  wheel with a hash-pinned toolchain, attests their build provenance, generates
+  a CycloneDX SBOM, and publishes to PyPI through Trusted Publishing with PEP 740
+  attestations after a reviewer approves the `release` environment.
 
 ### Changed
 - **CLI `verify` fails an `@1`/`@2` envelope that claims one ref for several
