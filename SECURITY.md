@@ -56,6 +56,12 @@ Releases are cut from an SSH-signed `v*` tag by `.github/workflows/publish.yml`,
   gh attestation verify sbom.cdx.json --repo presidio-v/presidio-evidence
   ```
 
+  Each asset's provenance bundle is also attached to the release as `<asset>.intoto.jsonl`, so it can be verified without querying GitHub's attestation store:
+
+  ```bash
+  gh attestation verify sbom.cdx.json --bundle sbom.cdx.json.intoto.jsonl --repo presidio-v/presidio-evidence
+  ```
+
 - **Release tags** are SSH-signed with the organisation's release key, registered as a signing key on the maintainer's GitHub account, so each tag shows as **Verified**:
 
   ```bash

@@ -86,8 +86,8 @@ jobs:
           # Describe what a user installs: the wheel with its `crypto` extra in a
           # clean venv, not the build or SBOM tooling.
           python -m venv /tmp/runtime
-          wheel=$(ls dist/*.whl)
-          /tmp/runtime/bin/pip install "${wheel}[crypto]"
+          /tmp/runtime/bin/pip install --require-hashes -r .github/constraints/crypto.txt
+          /tmp/runtime/bin/pip install --no-deps dist/*.whl
           cyclonedx-py environment /tmp/runtime/bin/python --output-format JSON --output-file sbom.cdx.json
       - name: Attest SBOM provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -124,6 +124,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      attestations: read # download the provenance bundles attested above
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -133,15 +134,30 @@ jobs:
         with:
           name: sbom
           path: .
+      - name: Collect provenance bundles
+        # Attach each file's build-provenance bundle as <file>.intoto.jsonl, so
+        # the release itself carries verifiable provenance (offline:
+        # gh attestation verify <file> --bundle <file>.intoto.jsonl --repo ...).
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir provenance
+          for f in dist/* sbom.cdx.json; do
+            digest=$(sha256sum "$f" | cut -d' ' -f1)
+            gh attestation download "$f" --repo "$GH_REPO"
+            mv "sha256:${digest}.jsonl" "provenance/$(basename "$f").intoto.jsonl"
+          done
       - name: Publish GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           if gh release view "$GITHUB_REF_NAME" --repo "$GH_REPO" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" dist/* sbom.cdx.json --repo "$GH_REPO" --clobber
+            gh release upload "$GITHUB_REF_NAME" dist/* sbom.cdx.json provenance/*.intoto.jsonl --repo "$GH_REPO" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" dist/* sbom.cdx.json \
+            gh release create "$GITHUB_REF_NAME" dist/* sbom.cdx.json provenance/*.intoto.jsonl \
               --repo "$GH_REPO" \
               --verify-tag \
               --title "$GITHUB_REF_NAME" \

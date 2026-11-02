@@ -31,7 +31,8 @@ jobs:
       - name: Install
         run: |
           python -m pip install --require-hashes -r .github/constraints/ci-toolchain.txt
-          pip install -e ".[fuzz]"
+          python -m pip install --require-hashes -r .github/constraints/fuzz.txt
+          python -m pip install --no-deps --no-build-isolation -e .
       - name: Run fuzz harnesses (time-boxed)
         # Runs without -O, so the harness assertions are checked.
         env:
