@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/presidio-v/presidio-evidence/actions/workflows/ci.yml/badge.svg)](https://github.com/presidio-v/presidio-evidence/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/presidio-v/presidio-evidence/badge)](https://scorecard.dev/viewer/?uri=github.com/presidio-v/presidio-evidence)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16243/badge)](https://www.bestpractices.dev/projects/16243)
 [![PyPI](https://img.shields.io/pypi/v/presidio-evidence.svg)](https://pypi.org/project/presidio-evidence/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
