@@ -118,7 +118,7 @@ docs/       MIGRATION.md (per-consumer plan)
 |---|---|---|
 | 0.1.0 – 0.4.0 | ADR-0001; schemas and vectors; Python reference implementation; consumer vectors; `evidence-ref@2` tiers; Rust Layer 0; key helpers and CLI; numeric encoding and gate-certificate identity | delivered |
 | 0.5.0 | First public release: `evidence-ref@3` subject binding (ADR-0004), contract trees as package data, scoutsuite consumer vector | current |
-| next | Producers dual-emit `@3`, consumers demand it per gate; tighter `training-run@1` / `gate-certificate@1` schemas ([#2](https://github.com/presidio-v/presidio-evidence/issues/2)) | planned |
+| next | Producers dual-emit `@3`, consumers demand it per gate; tighter `training-run@1` / `gate-certificate@1` schemas ([#1](https://github.com/presidio-v/presidio-evidence/issues/1)) | planned |
 
 Design rationale: [ADR-0001](docs/adr/ADR-0001-evidence-substrate.md). Requirements ledger: [PRESIDIO-REQ.md](PRESIDIO-REQ.md). Migration order: [docs/MIGRATION.md](docs/MIGRATION.md). Changes: [CHANGELOG.md](CHANGELOG.md).
 

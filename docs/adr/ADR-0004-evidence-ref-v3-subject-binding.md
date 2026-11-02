@@ -4,7 +4,7 @@
 **Date:** 2026-10-25
 **Deciders:** V.S. (founder, governing account)
 **Founder sign-off:** Accepted by V.S. on 2026-10-25.
-**Source mandate:** issue #1 (carried over from the development repository); ikigov-assess security audit 2026-09-30, finding C-1, and its consumer-side mitigation (ikigov-assess PR #60, `reused_refs`).
+**Source mandate:** an issue carried over from the development repository; ikigov-assess security audit 2026-09-30, finding C-1, and its consumer-side mitigation (ikigov-assess PR #60, `reused_refs`).
 
 ## Context
 
