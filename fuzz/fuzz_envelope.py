@@ -71,8 +71,10 @@ def TestOneInput(data: bytes) -> None:
         canonical_bytes(doc)
     except (ValueError, RecursionError):
         pass
-    if isinstance(doc, str):
-        assert isinstance(is_decimal_string(doc), bool)
+    # Fail closed on any JSON value, not only strings.
+    for precision in (0, 6):
+        assert isinstance(is_decimal_string(doc, precision=precision), bool)
+    assert isinstance(is_decimal_string(doc, precision=2, sentinels=("unbounded",)), bool)
 
 
 def main() -> None:
