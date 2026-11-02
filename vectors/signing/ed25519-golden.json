@@ -1,5 +1,5 @@
 {
-  "description": "Cross-repo Ed25519 golden vector. Pins the wire format: detached signature over canonical_json({content_hash, signer}). Matches the vectors committed in presidio-hardened-ai, x402, and ikigov-assess.",
+  "description": "Cross-repo Ed25519 golden vector. Pins the wire format: detached signature over canonical_json({content_hash, signer}). Matches the vectors committed in a private producer, x402, and ikigov-assess.",
   "algorithm": "ed25519",
   "private_key_hex": "0101010101010101010101010101010101010101010101010101010101010101",
   "public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",

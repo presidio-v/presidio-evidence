@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-10-18
 **Deciders:** V.S. (founder, governing account)
-**Founder sign-off:** Accepted by V.S. on 2026-10-18 (PR #46).
+**Founder sign-off:** Accepted by V.S. on 2026-10-18.
 **Source mandate:** suite numeric-encoding review 2026-10; canonical-json@1 float rejection (ADR-0001 D1); the energy fields of `training-run@1` and `energy-reading@1` (arch-translucency v0.23/v0.24). ADR-0004 is reserved for `evidence-ref@3` (issue #38).
 
 ## Context
@@ -80,7 +80,7 @@ Made precise:
 
 ## Action items
 
-1. [x] Founder sign-off on N1–N8 (Accepted 2026-10-18, PR #46).
+1. [x] Founder sign-off on N1–N8 (Accepted 2026-10-18).
 2. [x] Reference encoder/validator, `vectors/numeric-encoding/`, Python and Rust conformance (this PR).
 3. [ ] arch-translucency: adopt N1–N7 when `training-run@2` / `energy-reading@2` are cut; until then, nothing changes on its wire.
 4. [ ] ikigov-assess: predicate-hash preimage without floats (open point 2).

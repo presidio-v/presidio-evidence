@@ -80,7 +80,7 @@ def build() -> dict[pathlib.Path, dict]:
         "description": (
             "Cross-repo Ed25519 golden vector. Pins the wire format: detached "
             "signature over canonical_json({content_hash, signer}). Matches the "
-            "vectors committed in presidio-hardened-ai, x402, and ikigov-assess."
+            "vectors committed in a private producer, x402, and ikigov-assess."
         ),
         "algorithm": "ed25519",
         "private_key_hex": PRIV,

@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-10-18
 **Deciders:** V.S. (founder, governing account)
-**Founder sign-off:** Accepted by V.S. on 2026-10-18 (PR #46).
+**Founder sign-off:** Accepted by V.S. on 2026-10-18.
 **Source mandate:** provenance chain classify → gate → train (ADR-0002 adoption order); ikigov-assess `gate-certificate@1` (v0.23.0 T-B5, `certificate.py`); arch-translucency `training-run@1` (its ADR-0009). ADR-0004 is reserved for `evidence-ref@3` (issue #38).
 
 ## Context
@@ -72,12 +72,12 @@ Cross-checked at creation against ikigov-assess v0.28.0 (read-only): `build_cert
    - embedded-ref `assurance_tier` is optional in the schema, although ikigov always writes it;
    - `training-run@1` `model_hash` / `dataset_hash` come from producer code; no vector exercises them yet. The IEEE round-trip property of the energy fields is producer-enforced and cannot be expressed in JSON Schema;
    - semantic rules (decision recomputation, predicate identity, issuer = `signature.signer`, one ref per item) stay verifier-side.
-4. **Interaction with issue #38 / ADR-0004.** The identity covers the embedded refs and their `item_id`s, so a parent pins which ref backed which item at issuance. It does not close the relabelling gap of `evidence-ref@1`/`@2`, which is what ADR-0004 is reserved for.
+4. **Interaction with ADR-0004.** The identity covers the embedded refs and their `item_id`s, so a parent pins which ref backed which item at issuance. It does not close the relabelling gap of `evidence-ref@1`/`@2`, which is what ADR-0004 is reserved for.
 5. **ikigov does not expose the identity.** Recommended follow-up: ikigov adds `certificate_identity()` (or imports this library's), and `iga certify` prints it, so a producer can copy it into `parents` without recomputing.
 
 ## Action items
 
-1. [x] Founder sign-off on G1–G5 (Accepted 2026-10-18, PR #46).
+1. [x] Founder sign-off on G1–G5 (Accepted 2026-10-18).
 2. [x] Reference helper, both schemas, `vectors/gate-certificate/`, Python and Rust conformance (this PR).
 3. [ ] ikigov-assess: expose the identity (open point 5).
 4. [ ] arch-translucency: optional `--gate-certificate` verify-then-parent input (open point 1).

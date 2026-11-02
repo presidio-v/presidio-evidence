@@ -39,6 +39,10 @@ package is published on PyPI as `presidio-evidence`. Rust crate 0.3.0
 - `verify_ref` reads `assurance_tier` under `@3` as well as `@2`.
 - Package metadata: the `Private :: Do Not Upload` classifier is gone; project
   URLs and Python 3.10–3.13 classifiers added.
+- Documentation: issue and pull-request numbers from the development
+  repositories are removed from PRESIDIO-REQ and the ADRs, and the roadmap links
+  schema tightening to #1. The Ed25519 golden vector's description names the
+  private producer generically; no signed bytes changed.
 
 ### Security
 Fixes from the pre-publication security audit of 2026-10-25 (Cloudflare

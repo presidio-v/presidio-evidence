@@ -60,7 +60,7 @@ x402 imports the library at the screening pipeline boundary (**gated** on a foun
 
 ## v0.4.0 — ADR-0005 numeric encoding + ADR-0006 gate-certificate identity (released 2026-10-18)
 
-Both ADRs accepted by the founder on 2026-10-18 (#47). Additive only: no published vector, schema or wire format changed; canonical-json@1 is unchanged.
+Both ADRs accepted by the founder on 2026-10-18. Additive only: no published vector, schema or wire format changed; canonical-json@1 is unchanged.
 
 - R1 **ADR-0005 numeric payload encoding — Delivered.** `encode_decimal`, `is_decimal_string`, `decimal_pattern`, `UNBOUNDED_SENTINEL`; vectors under `vectors/numeric-encoding/`. `training-run@1` and `energy-reading@1` energy fields keep their shipped form (grandfather clause N8).
 - R2 **ADR-0006 gate-certificate@1 identity — Delivered.** `gate_certificate_identity`, `gate_certificate_signing_bytes`, `GATE_CERTIFICATE_SCHEMA_ID`; vectors under `vectors/gate-certificate/`, cross-checked against ikigov-assess v0.28.0.
@@ -90,14 +90,14 @@ The development history was published with internal correspondence removed.
   and `vectors/` under `presidio_evidence/_contract/`; `schemas_dir()`,
   `vectors_dir()`, `schema_ids()`, `load_schema()`. A source checkout reads the
   repository root.
-- R3 **scoutsuite consumer vector — Delivered** (issue #3). `vectors/cloud-posture/`:
+- R3 **scoutsuite consumer vector — Delivered**. `vectors/cloud-posture/`:
   clean AWS controls for IKI-Gov O5 and T5 as scoutsuite 0.30.0 builds them, with
   the 0.29.x legacy signatures pinned as must-fail. Cross-checked at creation
   against scoutsuite's own `claim_subject`, `content_hash`, `sign` and `verify_ref`.
 - R4 Publication: `Private :: Do Not Upload` dropped; PyPI as `presidio-evidence`;
   crate stays `publish = false`. CLI behaviour change: an @1/@2 envelope that claims
   one ref for several items now fails (ADR-0004 D5).
-- Not in scope: #2 (schema tightening, producer-coordinated), `walk_parents`
+- Not in scope: #1 (schema tightening, producer-coordinated), `walk_parents`
   (L-EV-5), trust-store CLI (L-EV-4), x402 binding.
 
 ## Provenance-parents convention (deliberated 2026-07-02, suite strategy)
@@ -220,7 +220,7 @@ Delivered (append-only; **no pre-existing vector touched** — generator `--chec
 - R6 `vectors/README.md` row. Version NOT bumped (release mechanics are
   founder-signed).
 
-**Field shape settled by maintainer decision on PR #14 (2026-07-13).** Merging
+**Field shape settled by maintainer decision (2026-07-13).** Merging
 freezes these choices under ADR-0001 D5:
 
 1. The payload carries no internal type id. The Layer-0 wrapper's `schema` is
