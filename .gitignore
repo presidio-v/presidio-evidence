@@ -21,3 +21,6 @@ rust/Cargo.lock
 .fuse_hidden*
 .claude/
 .specify/
+
+# Fuzz corpus (generated from vectors/ by fuzz/make_corpus.py)
+fuzz/corpus/

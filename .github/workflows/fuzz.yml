@@ -6,6 +6,7 @@ on:
     paths:
       - "fuzz/**"
       - "src/**"
+      - "vectors/**"
       - "pyproject.toml"
       - ".github/workflows/fuzz.yml"
   schedule:
@@ -38,13 +39,14 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$EVENT_NAME" = "pull_request" ]; then
-            args="-atheris_runs=25000 -max_total_time=60"
+            args="-max_total_time=60"
           else
             args="-max_total_time=300"
           fi
+          python fuzz/make_corpus.py fuzz/corpus
           for f in fuzz/fuzz_*.py; do
             echo "::group::$f"
-            python "$f" $args
+            python "$f" fuzz/corpus $args
             echo "::endgroup::"
           done
       - name: Upload crash artifacts

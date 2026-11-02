@@ -7,7 +7,8 @@ fails on any exception other than the declared `EvidenceError` / `ValueError`.
 
 ```bash
 python -m pip install -e '.[fuzz]'
-python fuzz/fuzz_envelope.py -max_total_time=60
+python fuzz/make_corpus.py fuzz/corpus   # seed from vectors/
+python fuzz/fuzz_envelope.py fuzz/corpus -max_total_time=60
 ```
 
 Linux only (Atheris has no macOS wheel). CI runs the harness on Python 3.12 on

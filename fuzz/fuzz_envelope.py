@@ -4,7 +4,9 @@
 
 Drives the consumer path on arbitrary bytes: JSON text through
 ``load_evidence`` / ``verify_envelope`` against a fixed trust store, plus
-``canonical_bytes`` and ``is_decimal_string`` on whatever parses. The invariant
+``canonical_bytes`` and ``is_decimal_string`` on whatever parses. Seed it with
+the published vectors (``fuzz/make_corpus.py``) so it starts from real
+envelopes. The invariant
 under test is the fail-closed contract: malformed input raises only
 ``EvidenceError`` (or a ``ValueError`` from the strict canonicaliser), and
 nothing else escapes.
@@ -39,11 +41,13 @@ TRUST = load_trust_store(
     }
 )
 
+# Verify each envelope without a framework and bound to one registered
+# framework id, so both branches of the @3 subject binding are exercised.
+FRAMEWORKS = (None, "iki-gov")
+
 
 def TestOneInput(data: bytes) -> None:
-    fdp = atheris.FuzzedDataProvider(data)
-    framework = fdp.ConsumeUnicodeNoSurrogates(16) if fdp.ConsumeBool() else None
-    text = fdp.ConsumeUnicode(fdp.remaining_bytes())
+    text = data.decode("utf-8", errors="replace")
 
     try:
         load_evidence(text)
@@ -54,11 +58,11 @@ def TestOneInput(data: bytes) -> None:
         doc = json.loads(text)
     except (json.JSONDecodeError, RecursionError):
         return
-    try:
-        results = verify_envelope(doc, TRUST, expected_framework=framework)
-    except EvidenceError:
-        pass
-    else:
+    for framework in FRAMEWORKS:
+        try:
+            results = verify_envelope(doc, TRUST, expected_framework=framework)
+        except EvidenceError:
+            continue
         for result in results:
             assert isinstance(result.verified, bool)
             assert result.verified == (result.reason == "ok")
