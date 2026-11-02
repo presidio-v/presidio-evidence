@@ -31,7 +31,7 @@ What changes:
 - `ledger.py` HMAC chain stays in-repo for now (ledger ≠ evidence; chained-ledger extraction is a recorded non-goal, L-EV ledger).
 - The producer/consumer contract test (`test_evidence_ref_matches_contract`) now asserts against `presidio_evidence.EVIDENCE_REF_FIELDS`.
 
-Gate: ikigov (step 1) green in CI for one release cycle first — producer changes are verified by the already-migrated consumer.
+Gate (amended 2026-11-02): originally, ikigov (step 1) green in CI for one release cycle first, so that the already-migrated consumer would catch producer drift. Relaxed by founder decision: step 2 may ship before step 1. The invariant above is enforced without it. The producer pins its own copies of the `canonical-json` and `signing` vectors and checks them against the installed library's vectors, and after the swap the producer and the library share one implementation, so the drift the gate guarded against cannot arise between them. Step 1 follows in ikigov's own release.
 
 ## 3. x402 + x402-mcp (customer-facing surface)
 
@@ -52,7 +52,7 @@ What changes:
 | Step | Repo | Precondition | Risk if skipped-ahead |
 |---|---|---|---|
 | 1 | ikigov-assess | presidio-evidence on PyPI (from 0.5.0) | packaging failure on every `pip install` |
-| 2 | private AI producer | step 1 green one cycle | producer drift undetected by consumer |
+| 2 | private AI producer | none since 2026-11-02 (pinned vectors in the producer) | producer drift undetected by consumer |
 | 3 | x402 (+mcp) | a founder decision on the x402 roadmap; OEM-kit review | churn on a customer-shipped surface |
 | 4 | treasury | none (vectors exist now) | n/a — can run any time after v0.1.0 |
 
