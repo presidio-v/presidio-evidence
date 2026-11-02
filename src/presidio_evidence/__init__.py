@@ -86,7 +86,7 @@ from ._signing import (
     verify_hmac,
 )
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 __all__ = [
     # contract constants (frozen; ADR-0001) + assurance tiers (ADR-0003)

@@ -5,6 +5,18 @@ From here on, changes are recorded in this file first. Pull-request and issue
 numbers in the history up to v0.5.0 refer to the private development
 repositories this history was published from.
 
+## [0.5.1] — 2026-11-02
+
+### Changed
+- **Requires Python 3.11 or newer.** Python 3.10 reached end of life in October
+  2026. 0.5.0 declared 3.10+ but could not be imported there
+  (`importlib.resources.abc` exists only from 3.11), so no working 3.10 release
+  is lost; pip on 3.10 no longer selects 0.5.1.
+- CI runs the test suite on every supported Python (3.12 and 3.13, in addition
+  to the full gate on 3.11), so a version-specific break fails the pull request.
+  The CI toolchain (pip, setuptools) and the SBOM generator are installed from
+  hash-pinned lockfiles.
+
 ## [0.5.0] — 2026-11-02
 
 First public release. The repository and its history are public, and the

@@ -1,12 +1,13 @@
 # Hash-pinned release toolchains
 
 These `*.txt` files are `--require-hashes` lockfiles for the standalone tools that
-`publish.yml` installs with `pip`. Pinning by hash satisfies the OpenSSF Scorecard
+the CI and release workflows install with `pip`. Pinning by hash satisfies the OpenSSF Scorecard
 **Pinned-Dependencies** check and stops a compromised package index from
 substituting the build backend, the metadata checker or the SBOM generator.
 
 | File | Tools | Used by |
 |---|---|---|
+| `ci-toolchain.txt` | pip, setuptools | `ci.yml` (all jobs) |
 | `release-build.txt` | pip, build, hatchling | `publish.yml` (build) |
 | `twine.txt` | twine | `publish.yml` (metadata check) |
 | `cyclonedx.txt` | cyclonedx-bom | `publish.yml` (SBOM) |
@@ -15,8 +16,8 @@ substituting the build backend, the metadata checker or the SBOM generator.
 
 ```bash
 cd .github/constraints
-for base in release-build twine cyclonedx; do
-  uv pip compile --generate-hashes --universal --python-version 3.10 \
+for base in ci-toolchain release-build twine cyclonedx; do
+  uv pip compile --generate-hashes --universal --python-version 3.11 \
     --annotation-style=line "$base.in" -o "$base.txt"
 done
 ```

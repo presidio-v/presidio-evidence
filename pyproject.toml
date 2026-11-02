@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "presidio-evidence"
-version = "0.5.0"
+version = "0.5.1"
 description = "Signed-evidence substrate for the presidio-hardened-* family: canonical JSON, Ed25519/HMAC evidence refs and fail-closed verification. Schemas and golden vectors are the contract. Independent of Microsoft Presidio."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Presidio Security" }]
 keywords = [
@@ -24,7 +24,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -65,7 +64,7 @@ packages = ["src/presidio_evidence"]
 "vectors" = "presidio_evidence/_contract/vectors"
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 100
 
 [tool.ruff.lint]

@@ -13,7 +13,7 @@ pip install presidio-evidence             # Layer 0 + HMAC, stdlib only
 pip install 'presidio-evidence[crypto]'   # adds Ed25519 (cryptography)
 ```
 
-Python 3.10+. The runtime has no dependencies; Ed25519 needs the `crypto` extra.
+Python 3.11+. The runtime has no dependencies; Ed25519 needs the `crypto` extra.
 
 ## Use
 
@@ -117,7 +117,8 @@ docs/       MIGRATION.md (per-consumer plan)
 | Version | Scope | Status |
 |---|---|---|
 | 0.1.0 – 0.4.0 | ADR-0001; schemas and vectors; Python reference implementation; consumer vectors; `evidence-ref@2` tiers; Rust Layer 0; key helpers and CLI; numeric encoding and gate-certificate identity | delivered |
-| 0.5.0 | First public release: `evidence-ref@3` subject binding (ADR-0004), contract trees as package data, scoutsuite consumer vector | current |
+| 0.5.0 | First public release: `evidence-ref@3` subject binding (ADR-0004), contract trees as package data, scoutsuite consumer vector | delivered |
+| 0.5.1 | Requires Python 3.11+ (3.10 is end of life); CI on every supported Python | current |
 | next | Producers dual-emit `@3`, consumers demand it per gate; tighter `training-run@1` / `gate-certificate@1` schemas ([#1](https://github.com/presidio-v/presidio-evidence/issues/1)) | planned |
 
 Design rationale: [ADR-0001](docs/adr/ADR-0001-evidence-substrate.md). Requirements ledger: [PRESIDIO-REQ.md](PRESIDIO-REQ.md). Migration order: [docs/MIGRATION.md](docs/MIGRATION.md). Changes: [CHANGELOG.md](CHANGELOG.md).
