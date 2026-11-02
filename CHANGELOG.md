@@ -5,7 +5,7 @@ From here on, changes are recorded in this file first. Pull-request and issue
 numbers in the history up to v0.5.0 refer to the private development
 repositories this history was published from.
 
-## [0.5.0] — 2026-10-25
+## [0.5.0] — 2026-11-02
 
 First public release. The repository and its history are public, and the
 package is published on PyPI as `presidio-evidence`. Rust crate 0.3.0
