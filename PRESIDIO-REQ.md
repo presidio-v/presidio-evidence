@@ -67,7 +67,7 @@ Both ADRs accepted by the founder on 2026-10-18. Additive only: no published vec
 - R3 Schemas `training-run.v1.schema.json` and `gate-certificate.v1.schema.json` describe what shipped producers already emit. Rust conformance covers both vector sets; crate stays at 0.2.0 (no crate API change).
 - R4 x402 binding — **blocked** (x402 roadmap); not in v0.5.0 either.
 
-## v0.5.0 — first public release (2026-10-25)
+## v0.5.0 — first public release (2026-11-02)
 
 Founder decision 2026-10-25: the repository goes public (ADR-0001 D6 amendment).
 The development history was published with internal correspondence removed.
@@ -96,7 +96,12 @@ The development history was published with internal correspondence removed.
   against scoutsuite's own `claim_subject`, `content_hash`, `sign` and `verify_ref`.
 - R4 Publication: `Private :: Do Not Upload` dropped; PyPI as `presidio-evidence`;
   crate stays `publish = false`. CLI behaviour change: an @1/@2 envelope that claims
-  one ref for several items now fails (ADR-0004 D5).
+  one ref for several items now fails (ADR-0004 D5). Released by `publish.yml`
+  from a signed tag: Trusted Publishing, PEP 740 and build-provenance
+  attestations, CycloneDX SBOM, reviewer-gated `release` environment.
+- R5 **Protected `main` — Delivered 2026-11-02.** Force-push and deletion blocked,
+  enforced for admins; a code-owner review, linear history and the `conformance`,
+  `conformance-rust` and `analyze` checks are required (ADR-0001 action item 7).
 - Not in scope: #1 (schema tightening, producer-coordinated), `walk_parents`
   (L-EV-5), trust-store CLI (L-EV-4), x402 binding.
 
