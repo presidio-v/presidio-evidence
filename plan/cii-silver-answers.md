@@ -13,23 +13,21 @@ Answers for the **silver** tab at bestpractices.dev, filled from the evidence in
 this repository on 2026-11-02. It covers only the criteria silver *adds* on top of
 passing; passing answers carry over unchanged (see `cii-passing-answers.md`).
 
-Preconditions before submitting silver (each is a separate human gate):
-
-- passing badge earned and the badge id recorded in `hardening.toml`;
-- the hardening PR merged, as for passing;
-- the badge embed added to the README (`documentation_achievements`).
+Before submitting silver: earn the passing badge first. The hardening PR is
+merged, the project is registered as
+[project 16243](https://www.bestpractices.dev/projects/16243), and the badge is
+on the README.
 
 Each row shows the **Status** to set in the dropdown and the **Justification** to
 paste. `REPO` = `https://github.com/presidio-v/presidio-evidence`.
 
 ## Badge embed
 
-Silver uses the **same** embed code as passing; the badge image auto-renders the
-current level. Once the project is registered, add this to the README with the
-real project id in place of `<id>`:
+Silver uses the **same** embed code as passing; the badge image renders the
+current level. It is on the README:
 
 ```markdown
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/<id>/badge)](https://www.bestpractices.dev/projects/<id>)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16243/badge)](https://www.bestpractices.dev/projects/16243)
 ```
 
 ## Backing docs
@@ -64,7 +62,7 @@ real project id in place of `<id>`:
 | `documentation_security` | **Met** | `REPO/blob/main/SECURITY.md` (threat model, invariants, reporting, release verification), `REPO/blob/main/ASSURANCE.md` (threat table, out-of-scope assumptions, design and weakness arguments), `REPO/blob/main/ARCHITECTURE.md#trust-boundaries`, and the design rationale in `docs/adr/` (ADR-0001 to ADR-0006). |
 | `documentation_quick_start` | **Met** | README "Install" (`pip install presidio-evidence`, or `[crypto]` for Ed25519), "Use" (a complete sign-then-verify example) and "CLI" (`verify`, `keygen`); `SEMVER.md#verifying-an-installation` runs the shipped golden vectors against an installed package. |
 | `documentation_current` | **Met** | Docs are updated in the same PR as the code they describe (`CHANGELOG.md` per version, `SEMVER.md` public API, ADRs, `PRESIDIO-REQ.md` delivery status), and the README, `SECURITY.md` and `SEMVER.md` describe the current 0.5 line. |
-| `documentation_achievements` | **Unmet** | The badge embed is not on the README yet because the project is not registered. Add it (see "Badge embed" above) as soon as the passing badge is earned, then set this row to Met. |
+| `documentation_achievements` | **Met** | The README front page shows and links the OpenSSF Best Practices badge (`REPO#presidio-evidence`, project 16243) next to the OpenSSF Scorecard badge; the badge image renders the current level, so a newly earned level appears without an edit. |
 
 ## Change control & reporting
 
@@ -128,7 +126,7 @@ real project id in place of `<id>`:
 | Criterion | Status | Justification to paste |
 |---|---|---|
 | `static_analysis_common_vulnerabilities` | **Met** | CodeQL for Python (`REPO/blob/main/.github/workflows/codeql.yml`) on every push/PR and weekly, and ruff's `S` (flake8-bandit) security rules as a required CI step; OpenSSF Scorecard (`scorecard.yml`) weekly and on every push to `main` for supply-chain posture. |
-| `dynamic_analysis_unsafe` | **N/A** | Python is memory-safe and the Rust crate is safe Rust (`#![forbid(unsafe_code)]`). The Atheris harness (`fuzz/fuzz_envelope.py`, `fuzz.yml`) runs regardless; it is newly added and has no results to report yet. |
+| `dynamic_analysis_unsafe` | **N/A** | Python is memory-safe and the Rust crate is safe Rust (`#![forbid(unsafe_code)]`). The Atheris harness (`fuzz/fuzz_envelope.py`, `fuzz.yml`) runs regardless, seeded from `vectors/`; its 60 s PR run on 2026-11-02 executed 583,156 inputs with no failure in the library. |
 | `dependency_monitoring` | **Met** | Dependabot (pip, cargo, GitHub Actions) with security updates enabled; `pip-audit` on every push and PR (`ci.yml`); OpenSSF Scorecard weekly. |
 
 ## Accessibility & internationalization

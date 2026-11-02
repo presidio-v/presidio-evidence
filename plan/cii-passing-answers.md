@@ -18,18 +18,12 @@ before the answers are submitted.
    PyPI URL returns `NotFound` → score 0 despite a real badge.
 2. **Log in with GitHub but decline the org grant.** BadgeApp requests `read:org`
    and no code path consumes it.
-3. **Merge the hardening PR first** — `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
-   `GOVERNANCE.md`, `ARCHITECTURE.md`, `ASSURANCE.md`, `SEMVER.md`,
-   `allowed_signers`, `.github/workflows/scorecard.yml` and
-   `.github/workflows/fuzz.yml` must be on `main`.
-4. **Merge the Python 3.11 change (PR #8, release 0.5.1) first.** The answers
-   below describe the project as it stands after it: Python 3.11+, the full gate
-   on 3.11 plus the test suite on 3.12 and 3.13, and the hash-pinned CI
-   toolchain (`.github/constraints/ci-toolchain.txt`) that `fuzz.yml` installs.
-5. **Align `CONTRIBUTING.md` with `SECURITY.md`** on the acknowledgement time
-   (CONTRIBUTING says 5 business days, SECURITY says 72 hours) before submitting.
-6. Record the badge id in `hardening.toml` (`[badge] bestpractices_id`) once the
-   project is created; it is not registered yet.
+3. Done on 2026-11-02: the hardening PR (#9) and the Python 3.11 change (#8,
+   release 0.5.1) are on `main`, and the project is registered as
+   [project 16243](https://www.bestpractices.dev/projects/16243), recorded in
+   `hardening.toml` (`[badge] bestpractices_id`).
+4. The answers below are also in `.bestpractices.json` at the repository root,
+   which BadgeApp reads to propose each answer for review.
 
 Shorthand below: `REPO` = `https://github.com/presidio-v/presidio-evidence`.
 
@@ -197,7 +191,7 @@ Shorthand below: `REPO` = `https://github.com/presidio-v/presidio-evidence`.
 
 | Criterion | Status | Justification / URL |
 |---|---|---|
-| `dynamic_analysis` | **Met** | The automated suite exceeds 80% branch coverage (195 of 196 branches, measured 2026-11-02; branch coverage is measured, not gated) and is applied to every release through CI. An Atheris coverage-guided fuzz harness (`fuzz/fuzz_envelope.py`) drives arbitrary bytes through `load_evidence`, `verify_envelope`, `canonical_bytes` and `is_decimal_string`, asserting that only `EvidenceError` or `ValueError` can escape; `.github/workflows/fuzz.yml` runs it on PRs that touch `src/` or `fuzz/` and weekly. The fuzz job is newly added and has no results to report yet. |
+| `dynamic_analysis` | **Met** | The automated suite exceeds 80% branch coverage (195 of 196 branches, measured 2026-11-02; branch coverage is measured, not gated) and is applied to every release through CI. An Atheris coverage-guided fuzz harness (`fuzz/fuzz_envelope.py`) drives arbitrary bytes through `load_evidence`, `verify_envelope`, `canonical_bytes` and `is_decimal_string`, asserting that only `EvidenceError` or `ValueError` can escape; `.github/workflows/fuzz.yml` seeds it from `vectors/` and runs it on PRs that touch `src/`, `fuzz/` or `vectors/` (60 s) and weekly (300 s). Its first seeded run (PR #9, 2026-11-02) found a defect in the harness itself, fixed in the same PR; the 60 s run after the fix executed 583,156 inputs at 177 coverage edges with no failure in the library. |
 | `dynamic_analysis_unsafe` | **N/A** | Python is memory-safe, and the Rust crate is safe Rust (`#![forbid(unsafe_code)]`). |
 | `dynamic_analysis_enable_assertions` | **Met** | Tests are assertion-based (pytest) and run without `-O`; the fuzz harness also runs without `-O`, so its assertions are checked. |
 | `dynamic_analysis_fixed` | **Met** | No unfixed medium+ findings. |
