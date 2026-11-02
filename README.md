@@ -1,5 +1,10 @@
 # presidio-evidence
 
+[![CI](https://github.com/presidio-v/presidio-evidence/actions/workflows/ci.yml/badge.svg)](https://github.com/presidio-v/presidio-evidence/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/presidio-v/presidio-evidence/badge)](https://scorecard.dev/viewer/?uri=github.com/presidio-v/presidio-evidence)
+[![PyPI](https://img.shields.io/pypi/v/presidio-evidence.svg)](https://pypi.org/project/presidio-evidence/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 The signed-evidence substrate of the presidio-hardened-* family. Every component that gates an action on evidence, or produces evidence for someone else to check, uses one contract: canonical JSON and SHA-256 content addressing, detached Ed25519 or HMAC-SHA256 signatures, fail-closed verification against a trust store, and provenance parents that chain payloads into a verifiable graph. Independent of Microsoft Presidio.
 
 The library was extracted from four production implementations before they could drift apart. Seven family repositories now conform to it. Provenance parents (ADR-0002) chain classification → gate decision → training run → runtime posture → payment into one DAG, so regulatory traceability is a data structure rather than process documentation.
@@ -119,13 +124,23 @@ docs/       MIGRATION.md (per-consumer plan)
 | 0.1.0 – 0.4.0 | ADR-0001; schemas and vectors; Python reference implementation; consumer vectors; `evidence-ref@2` tiers; Rust Layer 0; key helpers and CLI; numeric encoding and gate-certificate identity | delivered |
 | 0.5.0 | First public release: `evidence-ref@3` subject binding (ADR-0004), contract trees as package data, scoutsuite consumer vector | delivered |
 | 0.5.1 | Requires Python 3.11+ (3.10 is end of life); CI on every supported Python | current |
-| next | Producers dual-emit `@3`, consumers demand it per gate; tighter `training-run@1` / `gate-certificate@1` schemas ([#1](https://github.com/presidio-v/presidio-evidence/issues/1)) | planned |
+
+Next 12 months (to 2027-Q4), planned work only:
+
+- **Now (2026-Q4)** — consumers move from vendored code to the PyPI package, starting with ikigov-assess ([MIGRATION.md](docs/MIGRATION.md) step 1); OpenSSF Best Practices silver for this repository.
+- **Next (2027-H1)** — producers dual-emit `@2` and `@3`, then consumers demand `@3` per gate (ADR-0004 D8); tighter `training-run@1` and `gate-certificate@1` schemas ([#1](https://github.com/presidio-v/presidio-evidence/issues/1)).
+- **Later (under evaluation)** — a `capability-grant@1` vector once its producer exists; moving the remaining consumers onto the package in migration-map order.
 
 Design rationale: [ADR-0001](docs/adr/ADR-0001-evidence-substrate.md). Requirements ledger: [PRESIDIO-REQ.md](PRESIDIO-REQ.md). Migration order: [docs/MIGRATION.md](docs/MIGRATION.md). Changes: [CHANGELOG.md](CHANGELOG.md).
 
-## Security
+## Governance, architecture, security
 
-See [SECURITY.md](SECURITY.md) for supported versions, how to report a vulnerability, and the threat model.
+- [Governance](GOVERNANCE.md): roles, decision process, continuity, and how to become a maintainer.
+- [Architecture](ARCHITECTURE.md): components, the verification flow and the trust boundaries.
+- [Assurance case](ASSURANCE.md): the threat model and the argument that the security requirements are met.
+- [Security policy](SECURITY.md): supported versions, how to report a vulnerability, and how to verify a release.
+- [Stability and semver](SEMVER.md): the public API and the guarantees integrators can rely on.
+- [Contributing](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

@@ -15,7 +15,7 @@ Report privately, not in a public issue:
 - GitHub: [report a vulnerability](https://github.com/presidio-v/presidio-evidence/security/advisories/new) (private advisory), or
 - email security@presidio-group.eu.
 
-We acknowledge within 72 hours and aim to ship a fix within 30 days. Reporters are credited in the advisory unless they ask not to be. A flaw in the wire contract (a schema, a signing message or a vector) usually affects every consumer, so we coordinate the fix with them before disclosure.
+We acknowledge within 72 hours and aim to ship a fix within 30 days. Reporters are credited in the advisory and in the `CHANGELOG.md` entry for the fix unless they ask not to be. A flaw in the wire contract (a schema, a signing message or a vector) usually affects every consumer, so we coordinate the fix with them before disclosure.
 
 ## Threat model
 
@@ -34,6 +34,8 @@ Invariants enforced here:
 - **Malformed input never raises past the API.** A signature that is not lowercase hex verifies as `False` before any decode; strings that are not valid UTF-8 (lone surrogates) and control characters in `item_id`/`signer` are rejected when the envelope is parsed, with `EvidenceError`. The CLI prints identifiers JSON-escaped, one line per ref, so a producer cannot forge verdict lines or terminal escapes.
 - **Key handling.** `load_private_key` accepts only regular files with mode `0600`/`0400` (or an environment variable), reads with a size bound, opens before it checks (no TOCTOU), and never puts key material in an error message. `write_private_key` refuses to overwrite.
 
+The consolidated assurance case (threat model, trust boundaries, secure-design argument and how common implementation weaknesses are countered) is in [ASSURANCE.md](ASSURANCE.md); components and boundaries are in [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Test keys in this repository
 
 `vectors/` contains well-known test keys on purpose: the Ed25519 key `01`×32, the customer key `02`×32, and the HMAC key `shared-key`. They are published fixtures that make the vectors reproducible across repositories, not secrets. Secret scanners will flag them; they are allowlisted for the `vectors/` tree and the generator. Never use them outside tests.
@@ -41,3 +43,27 @@ Invariants enforced here:
 ## Security event logging
 
 The library itself logs nothing. Consumers log verification outcomes per the family standard and never log key material, tokens or evidence content.
+
+## Verifying releases and obtaining public signing keys
+
+Releases are cut from an SSH-signed `v*` tag by `.github/workflows/publish.yml`, which builds with a hash-pinned toolchain and publishes to PyPI through Trusted Publishing (OIDC, no stored API token) after a second reviewer approves the `release` environment. There is no key to fetch by hand for artefact verification.
+
+- **PyPI files** carry PEP 740 attestations from that workflow; PyPI shows them on each file's page.
+- **GitHub release assets** (wheel, sdist, CycloneDX SBOM) carry build-provenance attestations:
+
+  ```bash
+  gh attestation verify presidio_evidence-<version>-py3-none-any.whl --repo presidio-v/presidio-evidence
+  gh attestation verify sbom.cdx.json --repo presidio-v/presidio-evidence
+  ```
+
+- **Release tags** are SSH-signed with the organisation's release key, registered as a signing key on the maintainer's GitHub account, so each tag shows as **Verified**:
+
+  ```bash
+  gh api repos/presidio-v/presidio-evidence/git/tags/<sha> --jq .verification.verified
+  ```
+
+  The public key is in [`allowed_signers`](allowed_signers). To verify a tag locally:
+
+  ```bash
+  git -c gpg.ssh.allowedSignersFile=allowed_signers verify-tag <tag>
+  ```

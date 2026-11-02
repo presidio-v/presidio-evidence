@@ -61,8 +61,8 @@ package is published on PyPI as `presidio-evidence`. Rust crate 0.3.0
   private producer generically; no signed bytes changed.
 
 ### Security
-Fixes from the pre-publication security audit of 2026-10-25 (Cloudflare
-security-audit skill, two passes; four low-severity findings, all fixed):
+Fixes from the pre-publication security audit of 2026-10-25 (tool-assisted,
+two passes; four low-severity findings, all fixed):
 - **Trust store: a `public_key` could act as an HMAC secret.** An entry with
   `public_key` and no `alg` defaulted to `hmac-sha256` and used the public key as
   the shared secret, so anyone holding the public key could forge verified
