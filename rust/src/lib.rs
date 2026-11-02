@@ -22,6 +22,8 @@
 //! profile as Python's `json.dumps(sort_keys=True, separators=(",", ":"),
 //! ensure_ascii=False)`.
 
+#![forbid(unsafe_code)]
+
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fmt;

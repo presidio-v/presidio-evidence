@@ -1,0 +1,24 @@
+# hardening.toml — presidio-hardened-repo manifest for presidio-evidence.
+# Render input and re-run record for the OpenSSF hardening templates.
+# Python package with a Rust conformance lane; the Rust CI (fmt, clippy,
+# conformance tests) is maintained by hand.
+
+[project]
+name = "presidio-evidence"
+org = "presidio-v"
+package = "presidio_evidence"
+description = "Signed-evidence substrate for the presidio-hardened-* family: canonical JSON, Ed25519/HMAC evidence refs and fail-closed verification."
+language = "python"
+tier = "silver"
+
+[people]
+maintainer = "vstantch"
+reviewer = "ceoofcyber"
+security_contact = "security@presidio-group.eu"
+
+[legal]
+copyright_holder = "PRESIDIO Group"
+license = "MIT"
+
+[badge]
+bestpractices_id = 0          # placeholder until registered at bestpractices.dev
