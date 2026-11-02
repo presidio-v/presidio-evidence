@@ -5,6 +5,16 @@ From here on, changes are recorded in this file first. Pull-request and issue
 numbers in the history up to v0.5.0 refer to the private development
 repositories this history was published from.
 
+## [Unreleased]
+
+### Changed
+- CI, fuzzing and SBOM generation install every Python dependency from
+  hash-pinned lockfiles (`.github/constraints/dev.txt`, `fuzz.txt`,
+  `crypto.txt`), including the build backend for the editable install.
+- Releases attach each asset's build-provenance bundle as
+  `<asset>.intoto.jsonl`; the bundles were also added to the v0.5.0 and v0.5.1
+  releases.
+
 ## [0.5.1] — 2026-11-02
 
 ### Changed
