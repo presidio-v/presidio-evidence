@@ -8,6 +8,10 @@ repositories this history was published from.
 ## [Unreleased]
 
 ### Changed
+- Documentation: `presidio-hardened-ai`, public since 2026-11-03, is named again
+  where the text said "a private producer". The Ed25519 golden vector's
+  description names it too; no key, message or signature changed, and the file
+  is again byte-identical to the copy committed in that repository.
 - CI, fuzzing and SBOM generation install every Python dependency from
   hash-pinned lockfiles (`.github/constraints/dev.txt`, `fuzz.txt`,
   `crypto.txt`), including the build backend for the editable install.
