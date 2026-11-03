@@ -22,7 +22,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 V = ROOT / "vectors"
 
 # Cross-repo constants — pinned by the consumers' tests (ikigov-assess
-# tests/test_evidence.py, x402, a private producer). Do not change within @1.
+# tests/test_evidence.py, x402, presidio-hardened-ai). Do not change within @1.
 PRIV = "01" * 32
 EXPECTED_PUB = "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
 EXPECTED_SIG = (
@@ -80,7 +80,7 @@ def build() -> dict[pathlib.Path, dict]:
         "description": (
             "Cross-repo Ed25519 golden vector. Pins the wire format: detached "
             "signature over canonical_json({content_hash, signer}). Matches the "
-            "vectors committed in a private producer, x402, and ikigov-assess."
+            "vectors committed in presidio-hardened-ai, x402, and ikigov-assess."
         ),
         "algorithm": "ed25519",
         "private_key_hex": PRIV,
