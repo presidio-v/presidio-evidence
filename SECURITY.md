@@ -44,6 +44,16 @@ The consolidated assurance case (threat model, trust boundaries, secure-design a
 
 The library itself logs nothing. Consumers log verification outcomes per the family standard and never log key material, tokens or evidence content.
 
+## Software development lifecycle
+
+This library is developed under the Presidio hardened-family SDLC, in the
+**open-source baseline** tier: it is published on PyPI and PRESIDIO does not operate it
+as a service. The public report (scope, standards mapping, threat-model gates,
+supply-chain controls) is at
+<https://github.com/presidio-v/presidio-hardened-docs/blob/main/sdlc/sdlc-report.md>,
+and this repository's measured controls are its row in the
+[applicability matrix](https://github.com/presidio-v/presidio-hardened-docs/blob/main/sdlc/applicability.md).
+
 ## Verifying releases and obtaining public signing keys
 
 Releases are cut from an SSH-signed `v*` tag by `.github/workflows/publish.yml`, which builds with a hash-pinned toolchain and publishes to PyPI through Trusted Publishing (OIDC, no stored API token) after a second reviewer approves the `release` environment. There is no key to fetch by hand for artefact verification.
