@@ -142,6 +142,10 @@ Design rationale: [ADR-0001](docs/adr/ADR-0001-evidence-substrate.md). Requireme
 - [Security policy](SECURITY.md): supported versions, how to report a vulnerability, and how to verify a release.
 - [Stability and semver](SEMVER.md): the public API and the guarantees integrators can rely on.
 - [Contributing](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+- SDLC: developed under the presidio-hardened SDLC in its **open-source baseline** tier
+  ([report](https://github.com/presidio-v/presidio-hardened-docs/blob/main/sdlc/sdlc-report.md));
+  the controls measured for this repository are its row in the
+  [applicability matrix](https://github.com/presidio-v/presidio-hardened-docs/blob/main/sdlc/applicability.md).
 
 ## License
 
