@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "presidio-evidence: a signed-evidence substrate with canonical JSON, Ed25519 and HMAC evidence references and fail-closed verification"
+abstract: >-
+  Signed-evidence substrate: canonical JSON, content addressing, Ed25519 and
+  HMAC evidence references, provenance parents and fail-closed verification,
+  specified by JSON schemas and golden vectors with Python and Rust
+  conformance.
+type: software
+license: MIT
+repository-code: "https://github.com/presidio-v/presidio-evidence"
+keywords:
+  - signed evidence
+  - canonical JSON
+  - Ed25519
+  - audit
+  - provenance
+authors:
+  - family-names: Stantchev
+    given-names: Vladimir
+    orcid: "https://orcid.org/0000-0002-1551-419X"
+    affiliation: "SRH University Heidelberg"
