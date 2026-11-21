@@ -1,0 +1,22 @@
+{
+  "title": "presidio-evidence: a signed-evidence substrate with canonical JSON, Ed25519 and HMAC evidence references and fail-closed verification",
+  "upload_type": "software",
+  "description": "Signed-evidence substrate for the presidio-hardened-* family: canonical JSON, content addressing, Ed25519 and HMAC evidence references, provenance parents that chain records, and fail-closed verification. The contract is the JSON schemas and golden vectors; a Python package and a Rust crate both prove conformance against the same vectors. Independent of Microsoft Presidio.",
+  "creators": [
+    {
+      "name": "Stantchev, Vladimir",
+      "orcid": "0000-0002-1551-419X",
+      "affiliation": "SRH University Heidelberg"
+    }
+  ],
+  "license": "MIT",
+  "keywords": [
+    "signed evidence",
+    "canonical JSON",
+    "Ed25519",
+    "audit",
+    "provenance",
+    "verification",
+    "EU AI Act"
+  ]
+}
